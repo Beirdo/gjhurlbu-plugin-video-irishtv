@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import sys
 import re
 from time import strftime,strptime,mktime
@@ -15,9 +16,9 @@ from datetime import datetime
 from urlparse import urljoin
 
 
-import xbmc
-import xbmcgui
-import xbmcplugin
+#import xbmc
+#import xbmcgui
+#import xbmcplugin
 
 import mycgi
 import utils
@@ -30,6 +31,9 @@ from BeautifulSoup import BeautifulStoneSoup
 
 from provider import Provider
 from brightcove import BrightCoveProvider
+import logging
+
+logger = logging.getLogger(__name__)
 
 """
 'swfUrl' String 'http://admin.brightcove.com/viewer/us20130212.1339/federatedVideoUI/BrightcovePlayer.swf?uid=1360751436519'
@@ -69,18 +73,18 @@ class TG4Provider(BrightCoveProvider):
         return u"TG4"
 
     def ExecuteCommand(self, mycgi):
-        self.log(u"Language: " + self.addon.getSetting( u'TG4_language' ))
+        logger.info(u"Language: " + self.addon.getSetting( u'TG4_language' ))
         # 30018 = "Gaeilge"
         if self.addon.getSetting( u'TG4_language' ) != self.language(30018):
             self.languageCode = u"en"
         else:
             self.languageCode = u"ie"
 
-        self.log(u"languageCode: " + self.languageCode)
+        logger.info(u"languageCode: " + self.languageCode)
         return super(TG4Provider, self).ExecuteCommand(mycgi)
 
     def ShowRootMenu(self):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         try:
             listItems = []
             liveItemTuple = None
@@ -93,10 +97,11 @@ class TG4Provider(BrightCoveProvider):
 
             self.AddLiveMenuItem(listItems, u"Live", u"Beo", u'&live=1')
 
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+            #xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+            #xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-            return True
+            #return True
+            return listItems
         
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
@@ -108,7 +113,7 @@ class TG4Provider(BrightCoveProvider):
             
             # Cannot show root menu
             exception.addLogMessage(self.language(30010))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
 
@@ -146,7 +151,7 @@ class TG4Provider(BrightCoveProvider):
             
             # Error getting live schedule
             exception.addLogMessage(self.language(30035))
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
             return defaultSchedule
 
 
@@ -157,7 +162,7 @@ class TG4Provider(BrightCoveProvider):
         episodeId = episodeId.decode(u'latin1')
         series = series.decode(u'latin1')
        
-        self.log(u"(category: %s, episodeId: %s, series: %s)" % (type(category), type(episodeId), type(series)), xbmc.LOGDEBUG)
+        logger.debug(u"(category: %s, episodeId: %s, series: %s)" % (type(category), type(episodeId), type(series)))
         
         if search <> u'':
             return self.DoSearch()
@@ -192,8 +197,9 @@ class TG4Provider(BrightCoveProvider):
 
         categoryId = category[u'id'].replace(u'music', u'Ceol')
         thumbnailPath = self.GetThumbnailPath(newLabel)
-        newListItem = xbmcgui.ListItem( label=newLabel )
-        newListItem.setThumbnailImage(thumbnailPath)
+        newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+        #xbmcgui.ListItem( label=newLabel )
+        #newListItem.setThumbnailImage(thumbnailPath)
         url = self.GetURLStart() + u'&category=' + mycgi.URLEscape(categoryId)
 
         return (url, newListItem, True)
@@ -235,10 +241,11 @@ class TG4Provider(BrightCoveProvider):
                 listItems.append( self.CreateCategoryItem(category) )
                 # Replace "Results" with "Search"
 
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+            #xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+            #xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-            return True
+            #return True
+            return listItems
         
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
@@ -250,7 +257,7 @@ class TG4Provider(BrightCoveProvider):
             
             # Cannot show root menu
             exception.addLogMessage(self.language(30010))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
     def AddMenuItem(self, listItems, labelEN, labelIE, urlFragment):
@@ -261,8 +268,9 @@ class TG4Provider(BrightCoveProvider):
                 newLabel = labelIE
             
             thumbnailPath = self.GetThumbnailPath(newLabel)
-            newListItem = xbmcgui.ListItem( label=newLabel )
-            newListItem.setThumbnailImage(thumbnailPath)
+            newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
+            #newListItem.setThumbnailImage(thumbnailPath)
             url = self.GetURLStart() + urlFragment
                 
             listItems.append( (url, newListItem, True) )
@@ -271,7 +279,7 @@ class TG4Provider(BrightCoveProvider):
                 exception = LoggingException.fromException(exception)
 
             # Not fatal, just means that we don't have the news option
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
 
     def AddLiveMenuItem(self, listItems, labelEN, labelIE, urlFragment):
         try:
@@ -284,10 +292,12 @@ class TG4Provider(BrightCoveProvider):
 
             schedule = self.GetLiveSchedule()
             newLabel = newLabel + "  [" + schedule + "]"
-            newListItem = xbmcgui.ListItem( label=newLabel )
-            newListItem.setThumbnailImage(thumbnailPath)
-            newListItem.setProperty("Video", "true")
-            #newListItem.setProperty('IsPlayable', 'true')
+            newListItem = { "label" : newLabel, "thumbnail" : thumbnailPath,
+                            "Video" : True }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
+            #newListItem.setThumbnailImage(thumbnailPath)
+            #newListItem.setProperty("Video", "true")
+            ##newListItem.setProperty('IsPlayable', 'true')
 
             url = self.GetURLStart() + urlFragment
                 
@@ -297,18 +307,18 @@ class TG4Provider(BrightCoveProvider):
                 exception = LoggingException.fromException(exception)
 
             # Not fatal, just means that we don't have the news option
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
 
 
 
     def ShowCategory(self, category):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         url = searchCategory % mycgi.URLEscape(category)
     
-        self.ListEpisodes(url, True)
+        return self.ListEpisodes(url, True)
 
     def GetLiveVideoParams(self, js):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
 
         try:
             pattern = u"function (getLivePlayer.+?)^}"
@@ -332,38 +342,42 @@ class TG4Provider(BrightCoveProvider):
                 
             # Unable to determine live video parameters. Using default values.
             exception.addLogMessage(self.language(30022))
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
 
             return (defaultLiveVideoId, defaultLiveProgTitle)
             # "Error creating calendar list"
 
     def ListLatest(self):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         
         listItems = []
         
         try:
             today = date.today() 
             newLabel = u"Today"
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + today.strftime(u"%d.%m.%y")
             listItems.append( (url,newListItem,True) )
             
                 # Yesterday
             newLabel = u"Yesterday"
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(1)).strftime(u"%d.%m.%y")
             listItems.append( (url,newListItem,True) )
             
             # Weekday
             newLabel = (today - timedelta(2)).strftime(u"%A")
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(2)).strftime(u"%d.%m.%y")
             listItems.append( (url,newListItem,True) )
             
             # Weekday
             newLabel = (today - timedelta(3)).strftime(u"%A")
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+            #newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(3)).strftime(u"%d.%m.%y")
             listItems.append( (url,newListItem,True) )
     
@@ -372,16 +386,18 @@ class TG4Provider(BrightCoveProvider):
             sentinelDate = today - timedelta(36)
             while currentDate > sentinelDate:
                 newLabel = currentDate.strftime(u"%A, %d %B %Y")
-                newListItem = xbmcgui.ListItem( label=newLabel )
+                newListItem = { 'label' : newLabel }
+                #newListItem = xbmcgui.ListItem( label=newLabel )
                 url = self.GetURLStart() + u'&date=' + currentDate.strftime(u"%d.%m.%y")
                 listItems.append( (url,newListItem,True) )
     
                 currentDate = currentDate - timedelta(1) 
         
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+            #xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+            #xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-            return True
+            #return True
+            return listItems
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -404,11 +420,11 @@ class TG4Provider(BrightCoveProvider):
             
             exception.addLogMessage(logMessage = message + u"\n" + details)
             # "Error creating calendar list"
-            exception.process(message, "", self.logLevel(xbmc.LOGERROR))
+            exception.process(message, "", self.logLevel(logging.ERROR))
             return False
     
     def ListByDate(self, date):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
 
         return self.ListEpisodes( dateUrl % date )
 
@@ -419,7 +435,7 @@ class TG4Provider(BrightCoveProvider):
         
         if match == None or len(match.group(3)) == 3:
             # Error processing date string: 
-            self.log(self.language(30083) + dateString, xbmc.LOGWARNING)
+            logger.warning(self.language(30083) + dateString)
             return None
         
         if len(match.group(3)) == 2:
@@ -437,7 +453,7 @@ class TG4Provider(BrightCoveProvider):
         return airDate
 
     def ListEpisodes(self, url, showDate = False):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         
         """
         [{
@@ -480,7 +496,7 @@ class TG4Provider(BrightCoveProvider):
                     if title.startswith("TG4 Beo"):
                         continue
                     
-                    self.log(u"Title: " + title)
+                    logger.info(u"Title: " + title)
                     
                     if self.languageCode == u'ie':
                         description = item[u'longDescription']
@@ -490,8 +506,8 @@ class TG4Provider(BrightCoveProvider):
                     dateString = item[u'customFields'][u'date']
                     airDate = self.GetAirDate(dateString)
                     
-                    self.log(u"airDate: " + repr(airDate), xbmc.LOGDEBUG)
-                    self.log(u"showDate: " + repr(showDate), xbmc.LOGDEBUG)
+                    logger.debug(u"airDate: " + repr(airDate))
+                    logger.debug(u"showDate: " + repr(showDate))
                     if showDate and airDate is not None:
                         title = title + "  [" + airDate.strftime(u"%A, %d %B %Y") + "]"
 
@@ -513,12 +529,14 @@ class TG4Provider(BrightCoveProvider):
                     else:
                         newLabel = title
 
-                    newListItem = xbmcgui.ListItem( label=newLabel)
-                    newListItem.setThumbnailImage(thumbnail)
+                    newListItem = { 'label' : newLabel, 'thumbnail' : thumbnail,
+                                    'videoInfo' : infoLabels, 'Video' : True }
+                    #newListItem = xbmcgui.ListItem( label=newLabel)
+                    #newListItem.setThumbnailImage(thumbnail)
 
-                    newListItem.setInfo(u'video', infoLabels)
-                    newListItem.setProperty("Video", "true")
-                    #newListItem.setProperty('IsPlayable', 'true')
+                    #newListItem.setInfo(u'video', infoLabels)
+                    #newListItem.setProperty("Video", "true")
+                    ##newListItem.setProperty('IsPlayable', 'true')
                     
                     url = self.GetURLStart() + u'&episodeId=' + mycgi.URLEscape(id) + u'&series=' + mycgi.URLEscape(item['customFields']['seriestitle'])
      
@@ -537,12 +555,13 @@ class TG4Provider(BrightCoveProvider):
                         programme = u"programme"
 
                     exception.addLogMessage((self.language(30063) % programme))
-                    exception.process(self.language(30063) % programme, "", xbmc.LOGWARNING)
+                    exception.process(self.language(30063) % programme, "", logging.WARNING)
 
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+            #xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+            #xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-            return True
+            #return True
+            return listItems
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -557,13 +576,13 @@ class TG4Provider(BrightCoveProvider):
 
             # Error preparing or playing stream
             exception.addLogMessage(self.language(40340))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
             
 
         
     def PlayLiveTV(self):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         
         try:
             playerFunctionsJs = None
@@ -584,11 +603,11 @@ class TG4Provider(BrightCoveProvider):
             # Error playing or downloading episode %s
             exception.addLogMessage(self.language(30051) % (videoId + ", " + progTitle))
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % ' ' , '', self.logLevel(xbmc.LOGERROR))
+            exception.process(self.language(30051) % ' ' , '', self.logLevel(logging.ERROR))
             return False
         
     def AddSegments(self, playList):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         self.amfResponse = None
         if self.totalParts < 2:
             return
@@ -596,13 +615,13 @@ class TG4Provider(BrightCoveProvider):
         title = self.addon.getAddonInfo('name')
         icon = self.addon.getAddonInfo('icon')
         msg = self.language(30097) # Adding more parts
-        xbmc.executebuiltin('XBMC.Notification(%s, %s, 5000, %s)' % (title, msg, icon))
+        #xbmc.executebuiltin('XBMC.Notification(%s, %s, 5000, %s)' % (title, msg, icon))
 
-        self.log("Find videos parts for refence Id %s" % self.referenceId, xbmc.LOGDEBUG)
+        logger.debug("Find videos parts for reference Id %s" % self.referenceId)
         for partNumber in range(2, self.totalParts + 1):
             try:
                 self.amfResponse = None
-                self.log("Getting part %d" % partNumber, xbmc.LOGDEBUG)
+                logger.debug("Getting part %d" % partNumber)
                 partReference = self.referenceId[:-1] + unicode(partNumber)
                 mediaDTO = self.FindMediaByReferenceId(self.playerKey, self.playerId, partReference, self.publisherId)
 
@@ -626,14 +645,14 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(self.language(30197))
 
                 # Error playing or downloading episode %s
-                exception.process('' , '', self.logLevel(xbmc.LOGDEBUG))
+                exception.process('' , '', self.logLevel(logging.DEBUG))
 
 
     def ShowEpisode(self, episodeId, series, appFormat, live = False):
-        self.log(u"episodeId: %s, series: %s, live: %s" % (episodeId, series, live), xbmc.LOGDEBUG)
+        logger.debug(u"episodeId: %s, series: %s, live: %s" % (episodeId, series, live))
 
         # "Getting player functions"
-        self.dialog.update(5, self.language(30092))
+        #self.dialog.update(5, self.language(30092))
         try:
             playerFunctionsJs = None
             playerFunctionsJs = self.httpManager.GetWebPage(playerFunctionsUrl, 20000)
@@ -644,10 +663,10 @@ class TG4Provider(BrightCoveProvider):
             bitUrl = self.GetBitUrl(episodeId, series, fullLLinkUrl, playerFunctionsJs)
             qsData = self.GetQSData(episodeId, bitUrl, playerFunctionsJs)
 
-            if self.dialog.iscanceled():
-                return False
+            #if self.dialog.iscanceled():
+            #    return False
             # "Getting SWF url"
-            self.dialog.update(15, self.language(30089))
+            #self.dialog.update(15, self.language(30089))
             self.swfUrl = self.GetSwfUrl(qsData)
 
             self.playerId = qsData[u'playerId']
@@ -683,7 +702,7 @@ class TG4Provider(BrightCoveProvider):
             # Error playing or downloading episode %s
             exception.addLogMessage(self.language(30051) % (episodeId + ", " + series))
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % ' ' , '', self.logLevel(xbmc.LOGERROR))
+            exception.process(self.language(30051) % ' ' , '', self.logLevel(logging.ERROR))
             return False
 
     def GetPlayListDetailsFromAMF(self, mediaDTO, appFormat, episodeId, live):
@@ -749,7 +768,7 @@ class TG4Provider(BrightCoveProvider):
         
 
     def GetAmfClassHash(self, className):
-        self.log("className: " + className, xbmc.LOGDEBUG)
+        logger.debug("className: " + className)
 
         if className == "com.brightcove.experience.ExperienceRuntimeFacade":
 	        return u'2f5c3d72a1593b22fcedbca64cb6ff15cd6e97fe'
@@ -763,7 +782,7 @@ class TG4Provider(BrightCoveProvider):
 
     
     def GetDefaultQSData(self, vidId, bitlyUrl):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         bc_params = {}
         bc_params[u"id"] = u"myExperience1353057758001";
         bc_params[u"bgcolor"] = "#ffffff";
@@ -785,7 +804,7 @@ class TG4Provider(BrightCoveProvider):
         return bc_params;
 
     def GetQSData(self, vidId, bitlyUrl, js):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         
         try:
             pattern = u"function (createPlayerHtml.+?)^}"
@@ -800,12 +819,12 @@ class TG4Provider(BrightCoveProvider):
                 paramAppend = paramAppend.replace(u'true', u'True')
                 paramAppend = paramAppend.replace(u'["', u'[u"')
                 paramAppend = paramAppend.replace(u'= "', u'= u"')
-                self.log(u"paramAppend: %s" % paramAppend, xbmc.LOGDEBUG)
+                logger.debug(u"paramAppend: %s" % paramAppend)
                 exec(paramAppend)
             
             if bc_params < 10:
-                self.log(self.language(30036), xbmc.LOGWARNING)
-                self.log(utils.drepr(bc_params), xbmc.LOGDEBUG)
+                logger.warning(self.language(30036))
+                logger.debug(utils.drepr(bc_params))
                 return self.GetDefaultQSData(vidId, bitlyUrl)
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
@@ -813,34 +832,34 @@ class TG4Provider(BrightCoveProvider):
 
             # Unable to determine qsdata. Using default values.
             exception.addLogMessage(self.language(40600))
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
 
             return self.GetDefaultQSData(vidId, bitlyUrl)
             
         return bc_params
         
     def GetBitUrl(self, episodeId, series, longUrl, js):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         try:
             pattern = u"function (bit_url.+?)^}"
-            self.log(pattern, xbmc.LOGDEBUG)
+            logger.debug(pattern)
             match=re.search(pattern, js, re.MULTILINE | re.DOTALL)
             bit_url = match.group(1)
             
             pattern = u"var\s+username\s*=\s*[\"'](.+?)[\"']"
-            self.log(pattern, xbmc.LOGDEBUG)
+            logger.debug(pattern)
             username = re.search(pattern, bit_url, re.DOTALL).group(1)
 
             pattern = u"var\s+key\s*=\s*[\"'](.+?)[\"']"
-            self.log(pattern, xbmc.LOGDEBUG)
+            logger.debug(pattern)
             key = re.search(pattern, bit_url, re.DOTALL).group(1)
 
             pattern = u"url\s*:\s*[\"'](.+?)[\"']"
-            self.log(pattern, xbmc.LOGDEBUG)
+            logger.debug(pattern)
             apiUrl = re.search(pattern, bit_url, re.DOTALL).group(1)
 
             pattern = u"dataType\s*:\s*[\"'](.+?)[\"']"
-            self.log(pattern, xbmc.LOGDEBUG)
+            logger.debug(pattern)
             dataType = re.search(pattern, bit_url, re.DOTALL).group(1)
             
         except (Exception) as exception:
@@ -853,7 +872,7 @@ class TG4Provider(BrightCoveProvider):
 
             # Error getting bit.ly API parameters. Using default values.
             exception.addLogMessage(self.language(30037))
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
 
             # Defaults
             apiUrl = u"http://api.bit.ly/v3/shorten"
@@ -867,7 +886,7 @@ class TG4Provider(BrightCoveProvider):
     
 
     def CallBitlyApi(self, username, key, apiUrl, longUrl, dataType, episodeId, series ):
-        self.log("longUrl: %s", xbmc.LOGDEBUG)
+        logger.debug("longUrl: %s")
         try:
             values = {
                   u'callback': '%s%d' % (dataType, int(round(time.time() * 1000.0))),
@@ -890,13 +909,13 @@ class TG4Provider(BrightCoveProvider):
 
             # Error calling bit.ly API
             exception.addLogMessage(self.language(30038))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.process(severity = self.logLevel(logging.ERROR))
 
             raise exception
         
 
     def GetDefaultFullLink(self, episodeId, series):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         linkUrl = defaultLinkUrl % self.languageCode
         fullLinkUrl =  linkUrl + u"id=" + episodeId + u"&title=" + series
         
@@ -904,7 +923,7 @@ class TG4Provider(BrightCoveProvider):
         
         
     def GetFullLink(self, episodeId, series, js):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         try:
             pattern = u"function (loadPlayer.+?)^}"
             match=re.search(pattern, js, re.MULTILINE | re.DOTALL)
@@ -933,13 +952,16 @@ class TG4Provider(BrightCoveProvider):
 
             # Error getting player url. Using default.
             exception.addLogMessage(self.language(30039))
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.process(severity = logging.WARNING)
             
             return self.GetDefaultFullLink(episodeId, series)
 
     def DoSearchQuery( self, query):
         queryUrl = searchUrl % mycgi.URLEscape(query)
              
-        self.log(u"queryUrl: %s" % queryUrl, xbmc.LOGDEBUG)
+        logger.debug(u"queryUrl: %s" % queryUrl)
         
         return self.ListEpisodes(queryUrl, showDate = True)
+
+if __name__ == '__main__':
+    tg4 = TG4Provider()

@@ -1,36 +1,42 @@
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
+
 import traceback
 
-import xbmc
-import xbmcgui
+#import xbmc
+#import xbmcgui
 import sys
 import inspect
 import unicodedata
 
-from xbmc import log
+#from xbmc import log
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoggingException (Exception):
     
     def __init__(self, exception):
         self.trace = None
-        if hasattr(sys.modules["__main__"], "log"):
-            self.log = sys.modules["__main__"].log
-        else:
-            from utils import log
-            self.log = log
+        #if hasattr(sys.modules["__main__"], "log"):
+        #    self.log = sys.modules["__main__"].log
+        #else:
+        #    from utils import log
+        #    self.log = log
 
-            self.log("")
+        #    self.log("")
 
         addLogMessage(str(exception), 'Unknown')
     
     def __init__(self, logMessage = None):
         self.trace = None
-        if hasattr(sys.modules["__main__"], "log"):
-            self.log = sys.modules["__main__"].log
-        else:
-            from utils import log
-            self.log = log
+        #if hasattr(sys.modules["__main__"], "log"):
+        #    self.log = sys.modules["__main__"].log
+        #else:
+        #    from utils import log
+        #    self.log = log
 
-            self.log("")
+        #    self.log("")
 
         self.logMessages = []
     
@@ -66,21 +72,23 @@ class LoggingException (Exception):
 
     def printLogMessages(self, severity):
         for message in self.logMessages:
-            self.log(message[1], severity, message[0])
+            logger.log(severity, message[1], message[0])
+            #self.log(message[1], severity, message[0])
             
         if self.trace is not None:
-            self.log(self.trace, severity, method ="")
-            
+            logger.log(severity, self.trace, method="")
+            #self.log(self.trace, severity, method ="")
 
     def showInfo(self, messageHeading, messageDetail, severity):
-        if severity == xbmc.LOGERROR:
-            dialog = xbmcgui.Dialog()
-            dialog.ok(messageHeading, messageDetail, 'See log for details')
-        elif severity == xbmc.LOGWARNING:
-            # See log for details
-            xbmc.executebuiltin('XBMC.Notification(%s, %s)' % (self.normalize(messageHeading), 'See log for details'))
+        return
+        #if severity == xbmc.LOGERROR:
+        #    dialog = xbmcgui.Dialog()
+        #    dialog.ok(messageHeading, messageDetail, 'See log for details')
+        #elif severity == xbmc.LOGWARNING:
+        #    # See log for details
+        #    xbmc.executebuiltin('XBMC.Notification(%s, %s)' % (self.normalize(messageHeading), 'See log for details'))
 
-    def process(self, messageHeading = '', messageDetail = '', severity = xbmc.LOGDEBUG):
+    def process(self, messageHeading = '', messageDetail = '', severity = logging.DEBUG):
         if messageHeading == '':
              messageHeading = self.logMessages[-1][1]
              

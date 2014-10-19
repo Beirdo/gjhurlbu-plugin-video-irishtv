@@ -7,8 +7,8 @@ import unicodedata
 
 from time import mktime,strptime
 
-import xbmc
-from xbmcaddon import Addon
+#import xbmc
+#from xbmcaddon import Addon
 
 from loggingexception import LoggingException
 
@@ -20,17 +20,17 @@ def to_unicode(obj, encoding='utf-8'):
              obj = unicode(obj)
     return obj
 
-def log(msg, level = xbmc.LOGNOTICE, method = None):
-    try:
-        if method is None:
-            method = inspect.stack()[1][3]
-            
-        if isinstance(msg, unicode):
-            xbmc.log((u"%s : '%s'" % (method, msg)).encode('utf8'), level)
-        else:
-            xbmc.log(to_unicode((u"%s : '%s'" % (method, msg))).encode('utf8'), level)
-    except ( Exception ) as e:
-        xbmc.log(u"FALLBACK %s : '%s'" % (method, repr(msg)), level)
+#def log(msg, level = logging.INFO, method = None):
+#    try:
+#        if method is None:
+#            method = inspect.stack()[1][3]
+#            
+#        if isinstance(msg, unicode):
+#            logger.log(level, (u"%s : '%s'" % (method, msg)).encode('utf8'))
+#        else:
+#            logger.log(level, to_unicode((u"%s : '%s'" % (method, msg))).encode('utf8'))
+#    except ( Exception ) as e:
+#        logger.log(level, u"FALLBACK %s : '%s'" % (method, repr(msg)))
 
 #def log(msg, level = xbmc.LOGNOTICE):
 #	if isinstance(msg, unicode):

@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import re
 import sys
 from time import strftime,strptime
@@ -7,7 +8,6 @@ import urllib
 import pyamf
 from pyamf.remoting.client import RemotingService
 from pyamf import remoting
-import logging
 
 from datetime import timedelta
 from datetime import date
@@ -17,7 +17,7 @@ from urlparse import urljoin
 import pickle
 import base64
 
-import xbmc
+#import xbmc
 
 import utils
 from loggingexception import LoggingException
@@ -26,6 +26,9 @@ import HTMLParser
 from BeautifulSoup import BeautifulSoup
 
 from provider import Provider
+import logging
+
+logger = logging.getLogger(__name__)
 
 c_brightcove = "http://c.brightcove.com"
 
@@ -44,49 +47,49 @@ class BrightCoveProvider(Provider):
         for rendition in renditions:
             rates[rendition[u'encodingRate']] = rendition
         
-        self.log(u"rates.keys(): %s" % rates.keys())
+        logger.info(u"rates.keys(): %s" % rates.keys())
 
         #if 0 in rates:
         #    del rates[0]
 
         if preferredRate is None or preferredRate == -1:
-            self.log(u"min(rates.keys()): %s" % min(rates.keys()))
+            logger.info(u"min(rates.keys()): %s" % min(rates.keys()))
             return rates[min(rates.keys())][u'defaultURL']
 
         reverseRates = rates.keys()
         reverseRates.sort()
         reverseRates.reverse()
 
-        self.log(u"reverseRates: %s" % reverseRates)
+        logger.info(u"reverseRates: %s" % reverseRates)
 
         for rate in reverseRates:
-            self.log(u"if bitrate >= %s: %s" %( rate, preferredRate >= rate))
+            logger.info(u"if bitrate >= %s: %s" %( rate, preferredRate >= rate))
             if preferredRate >= rate:
                 return rates[rate][u'defaultURL']
 
         return rates[min(rates.keys())][u'defaultURL']
 
     def GetStreamUrl(self, key, url, playerId, contentRefId = None, contentId = None, streamType = "RTMP"):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         try:
             self.amfResponse = None
             self.amfResponse = self.GetEpisodeInfo(key, url, playerId, contentRefId = contentRefId, contentId = contentId)
             name = self.amfResponse[u'name']
            
-            self.log(u"Name field: " + name)
+            logger.info(u"Name field: " + name)
            
             preferredRate = self.GetBitRateSetting()
            
            
             defaultStreamUrl = self.amfResponse[u'programmedContent'][u'videoPlayer'][u'mediaDTO'][u'FLVFullLengthURL']
 
-            self.log(u"defaultStreamUrl: %s" % defaultStreamUrl)
+            logger.info(u"defaultStreamUrl: %s" % defaultStreamUrl)
            
             if preferredRate is None and defaultStreamUrl.upper().startswith(streamType):
                 return defaultStreamUrl 
 
             originalRenditions = self.amfResponse[u'programmedContent'][u'videoPlayer'][u'mediaDTO'][u'renditions']
-            self.log(u"renditions: %s" % utils.drepr(originalRenditions))
+            logger.info(u"renditions: %s" % utils.drepr(originalRenditions))
 
             renditions = []
             renditionsOther = []
@@ -100,10 +103,10 @@ class BrightCoveProvider(Provider):
                     renditionsOther.append(rendition)
             
             if len(renditions) == 0:
-                self.log(u"Unable to find stream of type '%s'" % streamType, xbmc.LOGWARNING)
+                logger.warning(u"Unable to find stream of type '%s'" % streamType)
                 renditions = renditionsOther
 
-            self.log(u"renditions: %s" % utils.drepr(renditions))
+            logger.info(u"renditions: %s" % utils.drepr(renditions))
             bitrate = self.ChooseBitRate(preferredRate, renditions)
 
             if bitrate == None:
@@ -122,7 +125,7 @@ class BrightCoveProvider(Provider):
             raise exception
                 
     def GetEpisodeInfo(self, key, url, playerId, contentRefId = None, contentId = None):
-        self.log(u"RemotingService", xbmc.LOGDEBUG)
+        logger.debug(u"RemotingService")
         
         try:            
             if self.proxyConfig is not None: 
@@ -132,7 +135,7 @@ class BrightCoveProvider(Provider):
             service = self.GetRemotingService(key, serviceName)
 
             hashValue = self.GetAmfClassHash(serviceName)
-            self.log(u'hashValue:' + str(hashValue))
+            logger.info(u'hashValue:' + str(hashValue))
          
             pyamf.register_class(ViewerExperienceRequest, 'com.brightcove.experience.ViewerExperienceRequest')
             pyamf.register_class(ContentOverride, 'com.brightcove.experience.ContentOverride')
@@ -142,7 +145,7 @@ class BrightCoveProvider(Provider):
             # Make the request
             response = service.getDataForExperience(hashValue, viewer_exp_req)
             
-            self.log(u"response: " + utils.drepr(response), xbmc.LOGDEBUG)
+            logger.debug(u"response: " + utils.drepr(response))
         finally:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Disable()
@@ -150,7 +153,7 @@ class BrightCoveProvider(Provider):
         return response
 
     def FindMediaByReferenceId(self, key, playerId, referenceId, pubId):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         
         try:            
             if self.proxyConfig is not None: 
@@ -161,11 +164,11 @@ class BrightCoveProvider(Provider):
 
             hashValue = self.GetAmfClassHash(serviceName)
     
-            self.log(u'hashValue:' + str(hashValue))
+            logger.info(u'hashValue:' + str(hashValue))
      
             response = service.findMediaByReferenceId(hashValue, int(playerId), referenceId, pubId)
             
-            self.log(u"response: " + utils.drepr(response), xbmc.LOGDEBUG)
+            logger.debug(u"response: " + utils.drepr(response))
 
         finally:
             if self.proxyConfig is not None: 
@@ -174,10 +177,10 @@ class BrightCoveProvider(Provider):
         return response
 
     def GetRemotingService(self, key, serviceName):
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-5.5s [%(name)s] %(message)s')
+        #logger.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-5.5s [%(name)s] %(message)s')
 
         headers = self.GetHeaders()
-        client = RemotingService(c_brightcove + "/services/messagebroker/amf?playerKey=" + key.encode("ascii"), amf_version=3,logger=logging, user_agent=headers['User-Agent'])
+        client = RemotingService(c_brightcove + "/services/messagebroker/amf?playerKey=" + key.encode("ascii"), amf_version=3,logger=logger, user_agent=headers['User-Agent'])
 
         if self.httpManager.GetIsForwardedForIP():
              forwardedIP = self.httpManager.GetForwardedForIP()
@@ -192,21 +195,21 @@ class BrightCoveProvider(Provider):
         return None
 
     def BuildAmfRequest(self, key, url, exp_id, contentRefId = None, contentId = None):
-       self.log(u'ContentRefId:' + str(contentRefId) + u', ExperienceId:' + str(exp_id) + u', URL:' + url)  
+       logger.info(u'ContentRefId:' + str(contentRefId) + u', ExperienceId:' + str(exp_id) + u', URL:' + url)  
 
        method = u"com.brightcove.experience.ExperienceRuntimeFacade.getDataForExperience"
        className = method[0:method.rfind('.')]
        hashValue = self.GetAmfClassHash(className)
 
-       self.log(u'hashValue:' + str(hashValue))
+       logger.info(u'hashValue:' + str(hashValue))
  
        pyamf.register_class(ViewerExperienceRequest, 'com.brightcove.experience.ViewerExperienceRequest')
        pyamf.register_class(ContentOverride, 'com.brightcove.experience.ContentOverride')
        content_override = ContentOverride(contentRefId = contentRefId, contentId = contentId)
        viewer_exp_req = ViewerExperienceRequest(url, [content_override], int(exp_id), key)
     
-       self.log( content_override.tostring() )
-       self.log( viewer_exp_req.tostring() )
+       logger.info( content_override.tostring() )
+       logger.info( viewer_exp_req.tostring() )
     
        env = remoting.Envelope(amfVersion=3)
        env.bodies.append(
@@ -222,13 +225,13 @@ class BrightCoveProvider(Provider):
        return env
 
     def BuildAmfRequest_FindRelated(self, key, exp_id, pubId, videoPlayer, pageSize, pageNumber, getItemCount):
-       self.log(u'ExperienceId:' + str(exp_id))  
+       logger.info(u'ExperienceId:' + str(exp_id))  
 
        method = "com.brightcove.player.runtime.PlayerSearchFacade.findRelatedVideos"
        className = method[0:method.rfind('.')]
        hashValue = self.GetAmfClassHash(className)
 
-       self.log(u'hashValue:' + str(hashValue))
+       logger.info(u'hashValue:' + str(hashValue))
  
        pageSize = 12
        pageNumber = 0
@@ -249,7 +252,7 @@ class BrightCoveProvider(Provider):
        return env
 
     def GetSwfUrl(self, qsData):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
         url = c_brightcove + "/services/viewer/federated_f9?&" + urllib.urlencode(qsData)
         response = self.httpManager.GetHTTPResponse(url)
 

@@ -1,15 +1,19 @@
-# -*- coding: utf-8 -*-
-import xbmc
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
+#import xbmc
 import sys
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RTMP:
     def __init__(self, rtmp, tcUrl = None, auth = None, app = None, playPath = None, swfUrl = None, swfVfy = None, pageUrl = None, live = None, socks = None, port = None):
-        if hasattr(sys.modules[u"__main__"], u"log"):
-            self.log = sys.modules[u"__main__"].log
-        else:
-            from utils import log
+        #if hasattr(sys.modules[u"__main__"], u"log"):
+        #    self.log = sys.modules[u"__main__"].log
+        #else:
+        #    from utils import log
         
         self.rtmp = rtmp
         self.tcUrl = tcUrl
@@ -36,7 +40,7 @@ class RTMP:
         self.rtmpdumpPath = rtmpdumpPath
         self.downloadFolder = downloadFolder
         
-        self.log (u"setDownloadDetails rtmpdumpPath: %s, downloadFolder: %s" % (self.rtmpdumpPath, self.downloadFolder), xbmc.LOGDEBUG)
+        logger.debug(u"setDownloadDetails rtmpdumpPath: %s, downloadFolder: %s" % (self.rtmpdumpPath, self.downloadFolder))
 
 
     def getDumpCommand(self):
@@ -51,7 +55,7 @@ class RTMP:
 
         command = ' '.join(args)
 
-        self.log(u"command: " + command, xbmc.LOGDEBUG)
+        logger.debug(u"command: " + command)
         return command
 
     def getSimpleParameters(self):
@@ -100,7 +104,7 @@ class RTMP:
         if self.port is not None:
             parameters[u"port"] = self.port
 
-        self.log(u"parameters: " + unicode(parameters), xbmc.LOGDEBUG)
+        self.log(u"parameters: " + unicode(parameters), loggin.DEBUG)
         return parameters
 
     def getParameters(self):
@@ -157,7 +161,7 @@ class RTMP:
             
         parameters = u' '.join(args)
 
-        self.log(u"parameters: " + parameters, xbmc.LOGDEBUG)
+        logger.debug(u"parameters: " + parameters)
         return parameters
 
     def getPlayUrl(self):
@@ -211,7 +215,7 @@ class RTMP:
 
         playURL = u' '.join(args)
 
-        self.log(u"playURL: " + playURL, xbmc.LOGDEBUG)
+        logger.debug(u"playURL: " + playURL)
 
         return playURL
 

@@ -1,3 +1,5 @@
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4
 # -*- coding: utf-8 -*-
 import os
 import sys
@@ -14,15 +16,18 @@ import HTMLParser
 from cookielib import Cookie
 from rtmp import RTMP
 
-import xbmc
-import xbmcgui
+#import xbmc
+#import xbmcgui
 
 from subprocess import Popen, PIPE, STDOUT
 import mycgi
 import utils
 
-from resumeplayer import BasePlayer, ResumePlayer, PlayerLockException
-from watched import Watched
+#from resumeplayer import BasePlayer, ResumePlayer, PlayerLockException
+#from watched import Watched
+import logging
+
+logger = logging.getLogger(__name__)
 
 countryInfoUrl = u"http://api.hostip.info/country.php"
 
@@ -36,13 +41,13 @@ class Provider(object):
     def __init__(self):
         self.proxy = None
         self.useBitRateSetting = False
-        if hasattr(sys.modules[u"__main__"], u"log"):
-            self.log = sys.modules[u"__main__"].log
-        else:
-            from utils import log
-            self.log = log
+        #if hasattr(sys.modules[u"__main__"], u"log"):
+        #    self.log = sys.modules[u"__main__"].log
+        #else:
+        #    from utils import log
+        #    self.log = log
 
-            self.log(u"")
+        #    self.log(u"")
 
         self.mediaPath = None
         #self.player = xbmc.Player
@@ -56,14 +61,14 @@ class Provider(object):
     def SetResourceFolder(self, resourcePath):
         self.resourcePath = resourcePath
         
-    def SetPlayer(self, player):
-        self.player = player
+#    def SetPlayer(self, player):
+#        self.player = player
 
     #def GetPlayer(self):
     #    return xbmc.Player() 
     
-    def GetPlayer(self, pid, live, playerName):
-        return BasePlayer() 
+#    def GetPlayer(self, pid, live, playerName):
+#        return BasePlayer() 
     
     def CreateForwardedForIP(self, currentForwardedForIP):
         currentSegments = currentForwardedForIP.split(u'.')
@@ -84,54 +89,54 @@ class Provider(object):
     otherwise we need to look at the other parameters to see what we need to do
     """
     def ExecuteCommand(self, mycgi):
-        self.log(u"mycgi.ParamCount(): " + unicode(mycgi.ParamCount()), xbmc.LOGDEBUG)
+        logger.debug(u"mycgi.ParamCount(): " + unicode(mycgi.ParamCount()))
         self.resumeEnabled = self.addon.getSetting(u'resume_enabled') == u'true'
         self.watchedEnabled = self.addon.getSetting(u'show_watched') == u'true'
  
         (forwardedIP, episodeId, playFromStart, resume, deleteResume, forceResumeUnlock, clearCache, watched, unwatched) = mycgi.Params( u'forwardedip', u'episodeId', PLAYFROMSTART, RESUME, DELETERESUME, FORCERESUMEUNLOCK, u'clearcache', u'watched', u'unwatched')
         
         if self.httpManager.GetIsForwardedForIP():
-             forwardedIP = self.CreateForwardedForIP(forwardedIP)
+            forwardedIP = self.CreateForwardedForIP(forwardedIP)
              
         if forwardedIP <> u'':
             self.httpManager.SetForwardedForIP( forwardedIP )
  
         if clearCache != u'':
-         self.httpManager.ClearCache()
-         return True
+            self.httpManager.ClearCache()
+            return True
    
-        if self.resumeEnabled:
-            ResumePlayer.RESUME_FILE = os.path.join( self.dataFolder, self.GetProviderId() + u'player_resume.txt')
-            ResumePlayer.RESUME_LOCK_FILE = os.path.join(self.dataFolder, self.GetProviderId() + u'player_resume_lock.txt')
-            ResumePlayer.ADDON = self.addon
-            
-            if deleteResume:
-                 ResumePlayer.delete_resume_point(deleteResume)
-                 xbmc.executebuiltin(u'Container.Refresh')
-                 return True
-     
-            if forceResumeUnlock:
-                 ResumePlayer.force_release_lock()
-                 return True
-             
-            if episodeId <> u'' and playFromStart == u'' and resume == u'':
-                # Only use default if playFromStart or resume are not explicitly set
-                if int(self.addon.getSetting(u'playaction')) == 0:
-                    mycgi._GetParamDict()[RESUME] = u'1'
+#        if self.resumeEnabled:
+#            ResumePlayer.RESUME_FILE = os.path.join( self.dataFolder, self.GetProviderId() + u'player_resume.txt')
+#            ResumePlayer.RESUME_LOCK_FILE = os.path.join(self.dataFolder, self.GetProviderId() + u'player_resume_lock.txt')
+#            ResumePlayer.ADDON = self.addon
+#            
+#            if deleteResume:
+#                 ResumePlayer.delete_resume_point(deleteResume)
+#                 #xbmc.executebuiltin(u'Container.Refresh')
+#                 return True
+#     
+#            if forceResumeUnlock:
+#                 ResumePlayer.force_release_lock()
+#                 return True
+#             
+#            if episodeId <> u'' and playFromStart == u'' and resume == u'':
+#                # Only use default if playFromStart or resume are not explicitly set
+#                if int(self.addon.getSetting(u'playaction')) == 0:
+#                    mycgi._GetParamDict()[RESUME] = u'1'
  
-        if self.watchedEnabled:
-            Watched.WATCHED_FILE = os.path.join( self.dataFolder, self.GetProviderId() + u'watched.txt')
-            Watched.ADDON = self.addon
-
-            if watched != u'':
-                 Watched.setWatched(episodeId)
-                 xbmc.executebuiltin( "Container.Refresh" )
-                 return True
-                
-            if unwatched != u'':
-                 Watched.clearWatched(episodeId)
-                 xbmc.executebuiltin( "Container.Refresh" )
-                 return True
+#        if self.watchedEnabled:
+#            Watched.WATCHED_FILE = os.path.join( self.dataFolder, self.GetProviderId() + u'watched.txt')
+#            Watched.ADDON = self.addon
+#
+#            if watched != u'':
+#                 Watched.setWatched(episodeId)
+#                 #xbmc.executebuiltin( "Container.Refresh" )
+#                 return True
+#                
+#            if unwatched != u'':
+#                 Watched.clearWatched(episodeId)
+#                 #xbmc.executebuiltin( "Container.Refresh" )
+#                 return True
                 
         if mycgi.ParamCount() > 1:
             return self.ParseCommand(mycgi)
@@ -143,9 +148,9 @@ class Provider(object):
             html = None
             html = self.httpManager.GetWebPageDirect(countryInfoUrl)
     
-            self.log(u"Country code: " + html)
+            logger.info(u"Country code: " + html)
         except (Exception) as exception:
-            self.log(u"Exception getting country code: " + repr(exception))
+            logger.info(u"Exception getting country code: " + repr(exception))
             
             
     def initialise(self, httpManager, baseurl, pluginHandle, addon, language, dataFolder, resourcePath):
@@ -164,9 +169,9 @@ class Provider(object):
         
         return True
         
-    def GetWatchedPercent(self):
-         watched_values = [.7, .8, .9]
-         return watched_values[int(self.addon.getSetting('watched-percent'))]
+#    def GetWatchedPercent(self):
+#         watched_values = [.7, .8, .9]
+#         return watched_values[int(self.addon.getSetting('watched-percent'))]
      
 
     def GetMediaPath(self):    
@@ -213,7 +218,7 @@ class Provider(object):
         try:
             proxy_method = int(self.addon.getSetting(self.GetProviderId() + u'_proxy_method'))
         except (Exception) as exception:
-            self.log("Exception getting proxy_method: " + unicode(exception), xbmc.LOGERROR)
+            self.error("Exception getting proxy_method: " + unicode(exception))
             proxy_method = 0
             
         return proxy_method
@@ -223,7 +228,7 @@ class Provider(object):
         self.httpManager.SetDefaultHeaders( self.GetHeaders() )
 
         proxy_method = self.GetProxyMethod()
-        self.log(u"proxy_method: %d" % proxy_method)
+        logger.info(u"proxy_method: %d" % proxy_method)
         
         self.proxyConfig = None
         if proxy_method == self.METHOD_PROXY or proxy_method == self.METHOD_PROXY_STREAMS:
@@ -286,19 +291,20 @@ class Provider(object):
 
     def GetAction(self, title):
         actionSetting = self.addon.getSetting( u'select_action' ).decode(u'utf8')
-        self.log (u"action: " + actionSetting, xbmc.LOGDEBUG)
+        self.debug(u"action: " + actionSetting)
+        action = 0
     
-        # Ask
-        if ( actionSetting == self.language(30120) ):
-            dialog = xbmcgui.Dialog()
-            # Do you want to play or download?    
+        ## Ask
+        #if ( actionSetting == self.language(30120) ):
+        #    dialog = xbmcgui.Dialog()
+        #    # Do you want to play or download?    
     
-            action = dialog.yesno(title, self.language(30530), u'', u'', self.language(30140),  self.language(30130)) # 1=Play; 0=Download
-        # Download
-        elif ( actionSetting == self.language(30140) ):
-            action = 0
-        else:
-            action = 1
+        #    action = dialog.yesno(title, self.language(30530), u'', u'', self.language(30140),  self.language(30130)) # 1=Play; 0=Download
+        ## Download
+        #elif ( actionSetting == self.language(30140) ):
+        #    action = 0
+        #else:
+        #    action = 1
     
         return action
     
@@ -334,7 +340,7 @@ class Provider(object):
                 exception = LoggingException.fromException(exception)
     
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % u'', u'', self.logLevel(xbmc.LOGERROR))
+            exception.process(self.language(30051) % u'', u'', self.logLevel(logging.ERROR))
             return False
     
     # If the programme is in multiple parts, then second, etc. parts to the playList
@@ -342,69 +348,80 @@ class Provider(object):
         return
 
     def CreateListItem(self, infoLabels, thumbnail):
+        listItem = {}
         if infoLabels is None:
-            self.log (u'Play titleId: Unknown Title')
-            listItem = xbmcgui.ListItem(u'Unknown Title')
+            logger.info(u'Play titleId: Unknown Title')
+            listItem['label'] = 'Unknown Title'
+            #listItem = xbmcgui.ListItem(u'Unknown Title')
         else:
-            self.log (u'Play titleId: ' + infoLabels[u'Title'])
-            listItem = xbmcgui.ListItem(infoLabels[u'Title'])
-            listItem.setInfo(u'video', infoLabels)
+            logger.info(u'Play titleId: ' + infoLabels[u'Title'])
+            listItem.update({'label' : infoLabels[u'Title'],
+                             'videoInfo' : infoLabels })
+            #listItem = xbmcgui.ListItem(infoLabels[u'Title'])
+            #listItem.setInfo(u'video', infoLabels)
 
         if thumbnail is not None:
-            listItem.setThumbnailImage(thumbnail)
+            listItem['thumbnail'] = thumbnail
+            #listItem.setThumbnailImage(thumbnail)
         
         return listItem
 
-    def Play(self, infoLabels, thumbnail, rtmpVar = None, url = None, subtitles = None, resumeKey = None, resumeFlag = False):
-        if url is None:
-            url = rtmpVar.getPlayUrl()
-             
-        if thumbnail is not None:
-            listItem = xbmcgui.ListItem(label=infoLabels[u'Title'], iconImage=thumbnail, thumbnailImage=thumbnail, path=url)
-            infoLabels[u'thumbnail'] = thumbnail
-
-        infoLabels[u'video_url'] = url
-        listItem.setInfo(type=u'Video', infoLabels=infoLabels)
-
-        if self.dialog.iscanceled():
-            return False
-
-        try:
-            player = self.GetPlayer(resumeKey, live=False, playerName=self.GetProviderId())
-        except PlayerLockException:
-            exception_dialog = xbmcgui.Dialog()
-            exception_dialog.ok(u"Stream Already Playing", u"Unable to open stream", u" - To continue, stop all other streams (try pressing u'x')[CR] - If you are sure there are no other streams [CR]playing, remove the resume lock (check addon settings -> advanced)")
-            return
-    
-            
-        player.resume_and_play( url, listItem, is_tv=True, playresume=resumeFlag )
-
-        self.dialog.close()
-        #xbmcplugin.setResolvedUrl(handle=self.pluginHandle, succeeded=True, listitem=listItem)
-        if subtitles is not None:
-            try:
-                self.log (u"Subtitle processing", xbmc.LOGDEBUG)
-                subtitleFile = subtitles.GetSubtitleFile()
-                player.setSubtitles(subtitleFile)
-            except (Exception) as exception:
-                if not isinstance(exception, LoggingException):
-                    exception = LoggingException.fromException(exception)
-            
-                # Error getting subtitles
-                exception.addLogMessage(self.language(30970))
-                exception.process(u'', u'', severity = xbmc.LOGWARNING)
-
-
-        self.log (u"AddSegments(playList)", xbmc.LOGDEBUG)
-        self.AddSegments(player.get_playlist())
-        self.log (u"Post AddSegments(playList)", xbmc.LOGDEBUG)
-    
-        if os.environ.get( u"OS" ) != u"xbox":
-            while player.isPlaying() and not xbmc.abortRequested:
-                xbmc.sleep(500)
-    
-            self.log(u"Exiting playback loop... (isPlaying %s, abortRequested %s)" % (player.isPlaying(), xbmc.abortRequested), level=xbmc.LOGDEBUG)
-            player.set_cancelled()
+#    def Play(self, infoLabels, thumbnail, rtmpVar = None, url = None, subtitles = None, resumeKey = None, resumeFlag = False):
+#        if url is None:
+#            url = rtmpVar.getPlayUrl()
+#             
+#        if thumbnail is not None:
+#            listItem = { 'label' : infoLabels[u'Title'],
+#                         'iconImage' : thumbnail, 'thumbnail' : thumbnail,
+#                         'path' : url }
+#            #listItem = xbmcgui.ListItem(label=infoLabels[u'Title'], iconImage=thumbnail, thumbnailImage=thumbnail, path=url)
+#            infoLabels[u'thumbnail'] = thumbnail
+#
+#        infoLabels[u'video_url'] = url
+#        listItem['videoInfo'] = infoLabels
+#        #listItem.setInfo(type=u'Video', infoLabels=infoLabels)
+#
+#        #if self.dialog.iscanceled():
+#        #    return False
+#
+##        try:
+##            player = self.GetPlayer(resumeKey, live=False, playerName=self.GetProviderId())
+##        except PlayerLockException:
+##            #exception_dialog = xbmcgui.Dialog()
+##            #exception_dialog.ok(u"Stream Already Playing", u"Unable to open stream", u" - To continue, stop all other streams (try pressing u'x')[CR] - If you are sure there are no other streams [CR]playing, remove the resume lock (check addon settings -> advanced)")
+##            #return
+##            pass
+#    
+#            
+##        player.resume_and_play( url, listItem, is_tv=True, playresume=resumeFlag )
+#
+#        #self.dialog.close()
+#        #xbmcplugin.setResolvedUrl(handle=self.pluginHandle, succeeded=True, listitem=listItem)
+#        if subtitles is not None:
+#            try:
+#                logger.debug(u"Subtitle processing")
+#                subtitleFile = subtitles.GetSubtitleFile()
+#                player.setSubtitles(subtitleFile)
+#            except (Exception) as exception:
+#                if not isinstance(exception, LoggingException):
+#                    exception = LoggingException.fromException(exception)
+#            
+#                # Error getting subtitles
+#                exception.addLogMessage(self.language(30970))
+#                exception.process(u'', u'', severity = logger.WARNING)
+#
+#
+#        logger.debug(u"AddSegments(playList)")
+#        self.AddSegments(player.get_playlist())
+#        logger.debug(u"Post AddSegments(playList)")
+#    
+##        if os.environ.get( u"OS" ) != u"xbox":
+##            while player.isPlaying() and not xbmc.abortRequested:
+##                time.sleep(500)
+##                #xbmc.sleep(500)
+#    
+##            logger.debug(u"Exiting playback loop... (isPlaying %s, abortRequested %s)" % (player.isPlaying(), xbmc.abortRequested))
+##            player.set_cancelled()
     
 
         """
@@ -460,7 +477,7 @@ class Provider(object):
         parameters = rtmpVar.getParameters()
 
         if subtitles is not None:
-            self.log (u"Getting subtitles")
+            logger.info(u"Getting subtitles")
 
         if subtitles is not None:
             try:
@@ -472,43 +489,45 @@ class Provider(object):
             
                 # Error getting subtitles
                 exception.addLogMessage(self.language(30970))
-                exception.process(u'', u'', severity = xbmc.LOGWARNING)
+                exception.process(u'', u'', severity = logging.WARNING)
 
-        if self.dialog.iscanceled():
-            return False
+        #if self.dialog.iscanceled():
+        #    return False
 
-        self.dialog.close()
+        #self.dialog.close()
 
         # Starting downloads 
-        self.log (u"Starting download: " + rtmpdumpPath + u" " + parameters)
+        logger.info(u"Starting download: " + rtmpdumpPath + u" " + parameters)
     
-        xbmc.executebuiltin((u'XBMC.Notification(%s, %s, 5000, %s)' % ( self.language(30610), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
+        #xbmc.executebuiltin((u'XBMC.Notification(%s, %s, 5000, %s)' % ( self.language(30610), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
     
-        self.log(u'"%s" %s' % (rtmpdumpPath, parameters))
+        logger.info(u'"%s" %s' % (rtmpdumpPath, parameters))
         if sys.modules[u"__main__"].get_system_platform() == u'windows':
             p = Popen( parameters, executable=rtmpdumpPath, shell=True, stdout=PIPE, stderr=PIPE )
         else:
             cmdline = u'"%s" %s' % (rtmpdumpPath, parameters)
             p = Popen( cmdline, shell=True, stdout=PIPE, stderr=PIPE )
     
-        self.log (u"rtmpdump has started executing", xbmc.LOGDEBUG)
+        logger.debug(u"rtmpdump has started executing")
         (stdout, stderr) = p.communicate()
-        self.log (u"rtmpdump has stopped executing", xbmc.LOGDEBUG)
+        logger.debug(u"rtmpdump has stopped executing")
     
         stderr = utils.normalize(stderr) 
 
         if u'Download complete' in stderr:
             # Download Finished!
-            self.log (u'stdout: ' + str(stdout), xbmc.LOGDEBUG)
-            self.log (u'stderr: ' + str(stderr), xbmc.LOGDEBUG)
-            self.log (u"Download Finished!")
-            xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000, %s)' % ( self.language(30620), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
+            logger.debug(u'stdout: ' + str(stdout))
+            logger.debug(u'stderr: ' + str(stderr))
+            logger.info(u"Download Finished!")
+            #xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000, %s)' % ( self.language(30620), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
+            return True
         else:
             # Download Failed!
-            self.log (u'stdout: ' + str(stdout), xbmc.LOGERROR)
-            self.log (u'stderr: ' + str(stderr), xbmc.LOGERROR)
-            self.log (u"Download Failed!")
-            xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000)' % ( u"Download Failed! See log for details", filename)).encode(u'utf8'))
+            logger.error(u'stdout: ' + str(stdout))
+            logger.error(u'stderr: ' + str(stderr))
+            logger.info(u"Download Failed!")
+            #xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000)' % ( u"Download Failed! See log for details", filename)).encode(u'utf8'))
+            return False
 
     #==============================================================================
     
@@ -516,57 +535,60 @@ class Provider(object):
     
         # Ensure rtmpdump has been located
         rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
-        if ( rtmpdumpPath is u'' ):
-            dialog = xbmcgui.Dialog()
+        #if ( rtmpdumpPath is u'' ):
+            #dialog = xbmcgui.Dialog()
             # Download Error - You have not located your rtmpdump executable...
-            dialog.ok(self.language(30560),self.language(30570),u'',u'')
-            self.addon.openSettings(sys.argv[ 0 ])
+            #dialog.ok(self.language(30560),self.language(30570),u'',u'')
+            #self.addon.openSettings(sys.argv[ 0 ])
             
-            rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
+            #rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
 
         if ( rtmpdumpPath is u'' ):
+            logger.error("Can't find rtmpdump!")
             return
         
         # Ensure default download folder is defined
         downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
-        if downloadFolder is u'':
-            d = xbmcgui.Dialog()
-            # Download Error - You have not set the default download folder.\n Please update the self.addon settings and try again.',u'',u'')
-            d.ok(self.language(30560),self.language(30580),u'',u'')
-            self.addon.openSettings(sys.argv[ 0 ])
+        #if downloadFolder is u'':
+            #d = xbmcgui.Dialog()
+            ## Download Error - You have not set the default download folder.\n Please update the self.addon settings and try again.',u'',u'')
+            #d.ok(self.language(30560),self.language(30580),u'',u'')
+            #self.addon.openSettings(sys.argv[ 0 ])
             
-            downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
+            #downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
 
         if downloadFolder is u'':
+            logger.error("No download folder defined!")
             return
         
-        if ( self.addon.getSetting(u'ask_filename') == u'true' ):
-            # Save programme as...
-            kb = xbmc.Keyboard( defaultFilename, self.language(30590))
-            kb.doModal()
-            if (kb.isConfirmed()):
-                filename = kb.getText().decode(u'utf8')
-            else:
-                return
-        else:
-            filename = defaultFilename
+        #if ( self.addon.getSetting(u'ask_filename') == u'true' ):
+            ## Save programme as...
+            #kb = xbmc.Keyboard( defaultFilename, self.language(30590))
+            #kb.doModal()
+            #if (kb.isConfirmed()):
+                #filename = kb.getText().decode(u'utf8')
+            #else:
+                #return
+        #else:
+            #filename = defaultFilename
+        filename = defaultFilename
         
         if ( filename.endswith(u'.flv') == False ): 
             filename = filename + u'.flv'
         
-        if ( self.addon.getSetting(u'ask_folder') == u'true' ):
-            dialog = xbmcgui.Dialog()
-            # Save to folder...
-            downloadFolder = dialog.browse(  3, self.language(30600), u'files', u'', False, False, downloadFolder ).decode(u'utf8')
+        #if ( self.addon.getSetting(u'ask_folder') == u'true' ):
+            #dialog = xbmcgui.Dialog()
+            ## Save to folder...
+            #downloadFolder = dialog.browse(  3, self.language(30600), u'files', u'', False, False, downloadFolder ).decode(u'utf8')
 
-        if ( downloadFolder == u'' ):
-            return
+        #if ( downloadFolder == u'' ):
+            #return
         
         return (rtmpdumpPath, downloadFolder, filename)
 
     def logLevel(self, requestLevel):
         if self.lastPageFromCache():
-            return xbmc.LOGDEBUG
+            return logging.DEBUG
         
         return requestLevel
     
@@ -581,14 +603,13 @@ class Provider(object):
     def GetThumbnailPath(self, thumbnail):
         thumbnail = unicodedata.normalize(u'NFKD', thumbnail).encode(u'ASCII', u'ignore')
         thumbnail = utils.replace_non_alphanum(thumbnail)
-        self.log(u"thumbnail: " + thumbnail, xbmc.LOGDEBUG)
+        logger.debug(u"thumbnail: " + thumbnail)
         path = os.path.join(self.GetMediaPath(), self.GetProviderId() + u'_' + thumbnail + u'.jpg')
         
         if not os.path.exists(path):
             path = os.path.join(self.GetMediaPath(), self.GetProviderId() + u'.jpg') 
 
-        if self.log is not None:
-            self.log(u"GetThumbnailPath: " + path, xbmc.LOGDEBUG)
+        log.debug(u"GetThumbnailPath: " + path)
         return path
     #
     def fullDecode(self, text):
@@ -614,24 +635,25 @@ class Provider(object):
                  
 #==============================================================================
     def DoSearch(self):
-        self.log(u"", xbmc.LOGDEBUG)
-        # Search
-        kb = xbmc.Keyboard( u"", self.language(30500) )
-        kb.doModal()
-        if ( kb.isConfirmed() == False ): return
-        query = kb.getText()
+        return False
+        #self.log(u"", xbmc.LOGDEBUG)
+        ## Search
+        #kb = xbmc.Keyboard( u"", self.language(30500) )
+        #kb.doModal()
+        #if ( kb.isConfirmed() == False ): return
+        #query = kb.getText()
 
-        return self.DoSearchQuery( query = query )
+        #return self.DoSearchQuery( query = query )
 
     # Download the given url and return the first string that matches the pattern
     def GetStringFromURL(self, url, pattern, maxAge = 20000):
-        self.log(u"url '%s', pattern '%s'" % (url, pattern), xbmc.LOGDEBUG)
+        logger.debug(u"url '%s', pattern '%s'" % (url, pattern))
     
         try:
             data = None
             data = self.httpManager.GetWebPage(url, maxAge)
     
-            self.log(u"len(data): " + str(len(data)), xbmc.LOGDEBUG)
+            logger.debug(u"len(data): " + str(len(data)))
     
             return re.search(pattern, data).groups()
         
@@ -648,13 +670,14 @@ class Provider(object):
             raise exception
     
     def PlayVideoWithDialog(self, method, parameters):
-        try:
-            self.dialog = xbmcgui.DialogProgress()
-            self.dialog.create(self.GetProviderId(), self.language(30085))
+        return False
+        #try:
+            #self.dialog = xbmcgui.DialogProgress()
+            #self.dialog.create(self.GetProviderId(), self.language(30085))
             
-            return method(*parameters)
-        finally:
-            self.dialog.close()
+            #return method(*parameters)
+        #finally:
+            #self.dialog.close()
 
     def MakeCookie(self, name, value, domain, expires = None):
         return Cookie(
@@ -676,45 +699,48 @@ class Provider(object):
                       rest={}
                       )
  
-    def ResumeWatchListItem(self, url, episodeId, contextMenuItems, infoLabels, thumbnail):
-        if self.watchedEnabled:
-            if Watched.isWatched(episodeId):
-                infoLabels['PlayCount']  = 1
-                contextMenuItems.append((u'Mark as unwatched', u"XBMC.RunPlugin(%s&unwatched=1)" % url))
-            else:
-                contextMenuItems.append((u'Mark as watched', u"XBMC.RunPlugin(%s&watched=1)" % url))
-
-        if self.resumeEnabled:
-            resume, dates_added = ResumePlayer.load_resume_file()
-            if episodeId in resume.keys():
-                resumeTime = self.ToHMS(resume[episodeId])
-                newTitle = u"%s [I](resumeable %s)[/I] " % (infoLabels[u'Title'], resumeTime)
-                infoLabels[u'Title'] = newTitle
-                infoLabels[u'LastPlayed'] = dates_added[episodeId]
-    
-                cmdDelete = u"XBMC.RunPlugin(%s&%s=%s)" % (self.GetURLStart(), DELETERESUME, episodeId)
-    
-                # Play from start
-                cmdFromStart = u"XBMC.RunPlugin(%s&%s=1)" % (url, PLAYFROMSTART) 
-                cmdResume = u"XBMC.RunPlugin(%s&%s=1)" % (url, RESUME)
-                contextMenuItems.append((u'Resume from %s' % resumeTime, cmdResume))
-                contextMenuItems.append((u'Play from start', cmdFromStart))
-                contextMenuItems.append((u'Remove resume point', cmdDelete))
-    
-            cmdForceUnlock = u"XBMC.RunPlugin(%s&%s=1)" % (self.GetURLStart(), FORCERESUMEUNLOCK)
-            contextMenuItems.append((u'Force unlock resume file', cmdForceUnlock))
-        
-        newListItem = xbmcgui.ListItem( infoLabels['Title'] )
-
-        newListItem.setThumbnailImage(thumbnail)
-        newListItem.setInfo(u'video', infoLabels)
-        newListItem.setLabel(infoLabels['Title'])
-        newListItem.setProperty("Video", "true")
-        
-        if len(contextMenuItems) > 0:
-            newListItem.addContextMenuItems(contextMenuItems)
-            
-        return newListItem
+#    def ResumeWatchListItem(self, url, episodeId, contextMenuItems, infoLabels, thumbnail):
+#        if self.watchedEnabled:
+#            if Watched.isWatched(episodeId):
+#                infoLabels['PlayCount']  = 1
+#                contextMenuItems.append((u'Mark as unwatched', u"XBMC.RunPlugin(%s&unwatched=1)" % url))
+#            else:
+#                contextMenuItems.append((u'Mark as watched', u"XBMC.RunPlugin(%s&watched=1)" % url))
+#
+#        if self.resumeEnabled:
+#            resume, dates_added = ResumePlayer.load_resume_file()
+#            if episodeId in resume.keys():
+#                resumeTime = self.ToHMS(resume[episodeId])
+#                newTitle = u"%s [I](resumeable %s)[/I] " % (infoLabels[u'Title'], resumeTime)
+#                infoLabels[u'Title'] = newTitle
+#                infoLabels[u'LastPlayed'] = dates_added[episodeId]
+#    
+#                cmdDelete = u"XBMC.RunPlugin(%s&%s=%s)" % (self.GetURLStart(), DELETERESUME, episodeId)
+#    
+#                # Play from start
+#                cmdFromStart = u"XBMC.RunPlugin(%s&%s=1)" % (url, PLAYFROMSTART) 
+#                cmdResume = u"XBMC.RunPlugin(%s&%s=1)" % (url, RESUME)
+#                contextMenuItems.append((u'Resume from %s' % resumeTime, cmdResume))
+#                contextMenuItems.append((u'Play from start', cmdFromStart))
+#                contextMenuItems.append((u'Remove resume point', cmdDelete))
+#    
+#            cmdForceUnlock = u"XBMC.RunPlugin(%s&%s=1)" % (self.GetURLStart(), FORCERESUMEUNLOCK)
+#            contextMenuItems.append((u'Force unlock resume file', cmdForceUnlock))
+#        
+#        newListItem = { 'label' : infoLabels['Title'], 'thumbnail' : thumbnail,
+#                        'videoInfo' : infoLabels, 'Video' : True }
+#        #newListItem = xbmcgui.ListItem( infoLabels['Title'] )
+#
+#        #newListItem.setThumbnailImage(thumbnail)
+#        #newListItem.setInfo(u'video', infoLabels)
+#        #newListItem.setLabel(infoLabels['Title'])
+#        #newListItem.setProperty("Video", "true")
+#        
+#        if len(contextMenuItems) > 0:
+#            newListItem['contextMenuItems' : contextMenuItems]
+#            #newListItem.addContextMenuItems(contextMenuItems)
+#            
+#        return newListItem
     
     
     def ToHMS(self, time):
