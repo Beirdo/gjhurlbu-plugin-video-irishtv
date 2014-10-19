@@ -1,6 +1,5 @@
-#/bin/python
-# -*- coding: utf-8 -*-
-
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 
 # http://wiki.xbmc.org/index.php?title=How-to:Debug_Python_Scripts_with_Eclipse
 
@@ -23,35 +22,44 @@ if REMOTE_DBG:
 
 
 import os
-import xbmcplugin
-import xbmcgui
-import xbmc
+#import xbmcplugin
+#import xbmcgui
+#import xbmc
 import re
 import cookielib
 import urllib2
-import xbmcvfs
+#import xbmcvfs
 import logging
 
-from xbmcaddon import Addon
+#from xbmcaddon import Addon
 from loggingexception import LoggingException
 from BeautifulSoup import BeautifulSoup
+from ConfigParser import SafeConfigParser
 
+logger = logging.getLogger(__name__)
 
-pluginName  = u'plugin.video.irishtv'
-pluginHandle = int(sys.argv[1])
-baseURL = sys.argv[0]
+#pluginName  = u'plugin.video.irishtv'
+#pluginHandle = int(sys.argv[1])
+#baseURL = sys.argv[0]
 
-addon = Addon(pluginName)
-language = addon.getLocalizedString
+#addon = Addon(pluginName)
+#language = addon.getLocalizedString
+
+persistDir = '/opt/prf/persist/irishtv'
+configFile = persistDir + '/config/irishtv.conf'
+config = SafeConfigParser()
+try:
+    config.readfp(open(configFile))
+except Exception, e:
+    logger.error("Error: %s" % e)
 
 import mycgi
 
 from httpmanager import HttpManager
 
-dbg = addon.getSetting(u"debug") == u"true"
+dbg = (config.get("general", "debug") == "true")
 dbglevel = 3
 
-from utils import log
 from socket import setdefaulttimeout
 from socket import getdefaulttimeout
 
@@ -64,18 +72,18 @@ from provider import Provider
 xhausUrl = "http://www.xhaus.com/headers"
 
 # Use masterprofile rather profile, because we are caching data that may be used by more than one user on the machine
-DATA_FOLDER	  = xbmc.translatePath( os.path.join( u"special://masterprofile", u"addon_data", pluginName ) )
-CACHE_FOLDER	 = os.path.join( DATA_FOLDER, u'cache' )
+DATA_FOLDER	  = config.get("general", "data-folder")
+CACHE_FOLDER	 = persistDir + "/cache"
 RESOURCE_PATH = os.path.join( sys.modules[u"__main__"].addon.getAddonInfo( u"path" ), u"resources" )
 MEDIA_PATH = os.path.join( RESOURCE_PATH, u"media" )
-PROFILE_DATA_FOLDER = xbmc.translatePath( os.path.join( u"special://profile", u"addon_data", pluginName) )
+PROFILE_DATA_FOLDER = persistDir + "/profile"
 COOKIE_PATH = os.path.join( PROFILE_DATA_FOLDER, u"cookiejar.txt" )
 
 
 log("Loading cookies from :" + repr(COOKIE_PATH))
 cookiejar = cookielib.LWPCookieJar(COOKIE_PATH)
 
-if xbmcvfs.exists(COOKIE_PATH):
+if os.path.exists(COOKIE_PATH):
     try:
         #cookiejar.load(COOKIE_PATH)
         cookiejar.load()
@@ -92,17 +100,8 @@ httpManager = HttpManager()
 #NO_SUBTITLE_FILE = os.path.join( RESOURCE_PATH, 'nosubtitles.smi' )
 
 def get_system_platform():
-	platform = u"unknown"
-	if xbmc.getCondVisibility( u"system.platform.linux" ):
-		platform = u"linux"
-	elif xbmc.getCondVisibility( u"system.platform.xbox" ):
-		platform = u"xbox"
-	elif xbmc.getCondVisibility( u"system.platform.windows" ):
-		platform = u"windows"
-	elif xbmc.getCondVisibility( u"system.platform.osx" ):
-		platform = u"osx"
-
-	log(u"Platform: %s" % platform, xbmc.LOGDEBUG)
+	platform = "linux"
+	logger.debug(u"Platform: %s" % platform)
 	return platform
 
 __platform__	 = get_system_platform()
@@ -123,27 +122,31 @@ def ShowProviders():
 		
 		provider.SetResourceFolder(RESOURCE_PATH)
 		providerName = provider.GetProviderId()
-		log(u"Adding " + providerName + u" provider", xbmc.LOGDEBUG)
-		newListItem = xbmcgui.ListItem( providerName )
+		logger.debug(u"Adding " + providerName + u" provider")
+        newListItem = { 'label' : providerName }
+		#newListItem = xbmcgui.ListItem( providerName )
 		url = baseURL + u'?provider=' + providerName
 
-		log(u"url: " + url, xbmc.LOGDEBUG)
+		logger.debug(u"url: " + url)
 		thumbnailPath = provider.GetThumbnailPath(providerName)
-		log(providerName + u" thumbnail: " + thumbnailPath, xbmc.LOGDEBUG)
-		newListItem.setThumbnailImage(thumbnailPath)
-		newListItem.addContextMenuItems( contextMenuItems )
+		logger.debug(providerName + u" thumbnail: " + thumbnailPath)
+        newListItem.update({'thumbnail' : thumbnailPath,
+                            'contextMenuItems' : contextItems })
+		#newListItem.setThumbnailImage(thumbnailPath)
+		#newListItem.addContextMenuItems( contextMenuItems )
 		listItems.append( (url,newListItem,True) )
 	
 
-	xbmcplugin.addDirectoryItems( handle=pluginHandle, items=listItems )
-	xbmcplugin.endOfDirectory( handle=pluginHandle, succeeded=True )
+	#xbmcplugin.addDirectoryItems( handle=pluginHandle, items=listItems )
+	#xbmcplugin.endOfDirectory( handle=pluginHandle, succeeded=True )
+    return listItems
 		
 
 #==============================================================================
 
 def InitTimeout():
-	log(u"getdefaulttimeout(): " + str(getdefaulttimeout()), xbmc.LOGDEBUG)
-	environment = os.environ.get( u"OS", u"xbox" )
+	logger.debug(u"getdefaulttimeout(): " + str(getdefaulttimeout()))
+	environment = os.environ.get( u"OS", u"linux" )
 	if environment in [u'Linux', u'xbox']:
 		try:
 			timeout = int(addon.getSetting(u'socket_timeout'))
@@ -155,7 +158,7 @@ def InitTimeout():
 def TestForwardedIP(forwardedIP):
 	try:
 		html = None
-		log(u"TestForwardedIP: " + forwardedIP)
+		logger.info(u"TestForwardedIP: " + forwardedIP)
 		httpManager.EnableForwardedForIP()
 		httpManager.SetForwardedForIP( forwardedIP )
 		html = httpManager.GetWebPageDirect( xhausUrl )
@@ -164,13 +167,10 @@ def TestForwardedIP(forwardedIP):
 		xForwardedForString = soup.find(text='X-Forwarded-For')
 		
 		if xForwardedForString is None:
-			dialog = xbmcgui.Dialog()
-			dialog.ok(language(30028), language(30032))
+			logger.error("Test failed: X-Forwarded-For header not received by website")
 		else:
 			forwardedForIP = xForwardedForString.parent.findNextSibling('td').text
-			
-			dialog = xbmcgui.Dialog()
-			dialog.ok(language(30029), language(30033) + forwardedForIP)
+			logger.info("Test passed: X-Forwarded-For header received as %s" % forwardedForIP)
 			
 		return True
 		
@@ -178,12 +178,11 @@ def TestForwardedIP(forwardedIP):
 		if not isinstance(exception, LoggingException):
 			exception = LoggingException.fromException(exception)
 
-		dialog = xbmcgui.Dialog()
-		dialog.ok(language(30031), language(30034))
+        logger.warning("Test inconclusive: Error processing web page")
 		
 		# Error getting web page
-		exception.addLogMessage(language(30050))
-		exception.printLogMessages(xbmc.LOGERROR)
+		exception.addLogMessage("Error getting web page")
+		exception.printLogMessages(logging.ERROR)
 		return False
 
 
@@ -204,7 +203,7 @@ def executeCommand():
 		
 		elif testForwardedIP != u'':
 			provider = Provider()
-			provider.addon = addon
+			#provider.addon = addon
 
 			httpManager.SetDefaultHeaders( provider.GetHeaders() )
 			forwardedIP = provider.CreateForwardedForIP('0.0.0.0')
@@ -212,20 +211,20 @@ def executeCommand():
 			return TestForwardedIP(forwardedIP)
 			
 		elif providerName != u'':
-			log(u"providerName: " + providerName, xbmc.LOGDEBUG)
+			logger.debug(u"providerName: " + providerName)
 			if providerName <> u'':
 				provider = providerfactory.getProvider(providerName)
 				
 				if provider is None:
 					# ProviderFactory return none for providerName: %s
-					logException = LoggingException(language(30000) % providerName)
+					logException = LoggingException("ProviderFactory returned None for providerName: %s" % providerName)
 					# 'Cannot proceed', Error processing provider name
-					logException.process(language(30755), language(30020), xbmc.LOGERROR)
+					logException.process("Cannot proceed", "Error processing provider name", logging.ERROR)
 					return False
 				
-				if provider.initialise(httpManager, sys.argv[0], pluginHandle, addon, language, PROFILE_DATA_FOLDER, RESOURCE_PATH):
+				if provider.initialise(httpManager, sys.argv[0], pluginHandle, addon, PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
 					success = provider.ExecuteCommand(mycgi)
-					log (u"executeCommand done", xbmc.LOGDEBUG)
+					logger.debug(u"executeCommand done")
 
 				"""
 				print cookiejar
@@ -264,12 +263,12 @@ if __name__ == u"__main__":
 			httpManager.setGetFromCache(True)
 			success = executeCommand()			
 	
-			xbmc.log(u"success: %s, getGotFromCache(): %s" % (unicode(success), unicode(httpManager.getGotFromCache())), xbmc.LOGDEBUG)
+			logger.debug(u"success: %s, getGotFromCache(): %s" % (unicode(success), unicode(httpManager.getGotFromCache())))
 			
 			if success is not None and success == False and httpManager.getGotFromCache() == True:
 				httpManager.setGetFromCache(False)
 				executeCommand()
-				log (u"executeCommand after", xbmc.LOGDEBUG)
+				logger.debug(u"executeCommand after")
 				
 		except:
 			# Make sure the text from any script errors are logged

@@ -73,9 +73,9 @@ class TG4Provider(BrightCoveProvider):
         return u"TG4"
 
     def ExecuteCommand(self, mycgi):
-        logger.info(u"Language: " + self.addon.getSetting( u'TG4_language' ))
-        # 30018 = "Gaeilge"
-        if self.addon.getSetting( u'TG4_language' ) != self.language(30018):
+        language = self.config.get("tg4", "language", "English")
+        logger.info(u"Language: " + language)
+        if language != "Gaeilge":
             self.languageCode = u"en"
         else:
             self.languageCode = u"ie"
@@ -107,12 +107,12 @@ class TG4Provider(BrightCoveProvider):
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
 
-            if xml is not None:
-                msg = u"xml:\n\n%s\n\n" % xml
-                exception.addLogMessage(msg)
+            #if xml is not None:
+            #    msg = u"xml:\n\n%s\n\n" % xml
+            #    exception.addLogMessage(msg)
             
             # Cannot show root menu
-            exception.addLogMessage(self.language(30010))
+            exception.addLogMessage("Cannot show root menu")
             exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
@@ -139,7 +139,7 @@ class TG4Provider(BrightCoveProvider):
             
             # "Now: Unknown, Next: "
             # E.g. "Now: Unknown, Next: 19:00 Nuacht TG4"
-            return self.language(30024) + found.previousSibling.text + " " + found.contents[0]
+            return "Now: Unknown, Next: " + found.previousSibling.text + " " + found.contents[0]
         
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
@@ -150,7 +150,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
             
             # Error getting live schedule
-            exception.addLogMessage(self.language(30035))
+            exception.addLogMessage("Error getting live schedule")
             exception.process(severity = logging.WARNING)
             return defaultSchedule
 
@@ -256,7 +256,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
             
             # Cannot show root menu
-            exception.addLogMessage(self.language(30010))
+            exception.addLogMessage("Cannot show root menu")
             exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
@@ -341,7 +341,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
                 
             # Unable to determine live video parameters. Using default values.
-            exception.addLogMessage(self.language(30022))
+            exception.addLogMessage("Unable to determine live video parameters. Using default values.")
             exception.process(severity = logging.WARNING)
 
             return (defaultLiveVideoId, defaultLiveProgTitle)
@@ -407,7 +407,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
                 
             # "Error creating calendar list"
-            message = self.language(30064)
+            message = "Error creating calendar list"
             details = utils.valueIfDefined(minDateString, u'minDateString') + u", "
             details = details + utils.valueIfDefined(maxDateString, u'maxDateString') + u", "
             
@@ -435,7 +435,7 @@ class TG4Provider(BrightCoveProvider):
         
         if match == None or len(match.group(3)) == 3:
             # Error processing date string: 
-            logger.warning(self.language(30083) + dateString)
+            logger.warning("Error processing date string" + dateString)
             return None
         
         if len(match.group(3)) == 2:
@@ -554,8 +554,8 @@ class TG4Provider(BrightCoveProvider):
                     else:
                         programme = u"programme"
 
-                    exception.addLogMessage((self.language(30063) % programme))
-                    exception.process(self.language(30063) % programme, "", logging.WARNING)
+                    exception.addLogMessage(("Error processing %s"% programme))
+                    exception.process("Error processing %s"% programme, "", logging.WARNING)
 
             #xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
             #xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
@@ -575,7 +575,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
 
             # Error preparing or playing stream
-            exception.addLogMessage(self.language(40340))
+            exception.addLogMessage("Error preparing or playing stream")
             exception.process(severity = self.logLevel(logging.ERROR))
             return False
             
@@ -601,9 +601,9 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
 
             # Error playing or downloading episode %s
-            exception.addLogMessage(self.language(30051) % (videoId + ", " + progTitle))
+            exception.addLogMessage("Error playing or downloading episode %s" % (videoId + ", " + progTitle))
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % ' ' , '', self.logLevel(logging.ERROR))
+            exception.process("Error playing or downloading episode %s" % ' ' , '', self.logLevel(logging.ERROR))
             return False
         
     def AddSegments(self, playList):
@@ -614,7 +614,7 @@ class TG4Provider(BrightCoveProvider):
 
         title = self.addon.getAddonInfo('name')
         icon = self.addon.getAddonInfo('icon')
-        msg = self.language(30097) # Adding more parts
+        msg = "Adding more parts of this programme" # Adding more parts
         #xbmc.executebuiltin('XBMC.Notification(%s, %s, 5000, %s)' % (title, msg, icon))
 
         logger.debug("Find videos parts for reference Id %s" % self.referenceId)
@@ -642,7 +642,7 @@ class TG4Provider(BrightCoveProvider):
                     exception.addLogMessage(msg)
 
                 # Error processing 
-                exception.addLogMessage(self.language(30197))
+                exception.addLogMessage("Error processing")
 
                 # Error playing or downloading episode %s
                 exception.process('' , '', self.logLevel(logging.DEBUG))
@@ -672,10 +672,11 @@ class TG4Provider(BrightCoveProvider):
             self.playerId = qsData[u'playerId']
             self.playerKey = qsData[u'playerKey']
             
-            if self.dialog.iscanceled():
-                return False
+            #if self.dialog.iscanceled():
+            #    return False
             # "Getting stream url"
-            self.dialog.update(30, self.language(30087))
+            #self.dialog.update(30, self.language(30087))
+            logger.info("Getting stream url")
             rtmpUrl = self.GetStreamUrl(self.playerKey, playerUrl, self.playerId, contentId = episodeId)
             
             self.publisherId = unicode(int(float(self.amfResponse[u'publisherId']))) 
@@ -700,9 +701,9 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
 
             # Error playing or downloading episode %s
-            exception.addLogMessage(self.language(30051) % (episodeId + ", " + series))
+            exception.addLogMessage("Error playing or downloading episode %s" % (episodeId + ", " + series))
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % ' ' , '', self.logLevel(logging.ERROR))
+            exception.process("Error playing or downloading episode %s" % ' ' , '', self.logLevel(logging.ERROR))
             return False
 
     def GetPlayListDetailsFromAMF(self, mediaDTO, appFormat, episodeId, live):
@@ -823,7 +824,7 @@ class TG4Provider(BrightCoveProvider):
                 exec(paramAppend)
             
             if bc_params < 10:
-                logger.warning(self.language(30036))
+                logger.warning("Unable to determine qsdata. Using default values.")
                 logger.debug(utils.drepr(bc_params))
                 return self.GetDefaultQSData(vidId, bitlyUrl)
         except (Exception) as exception:
@@ -831,7 +832,7 @@ class TG4Provider(BrightCoveProvider):
                 exception = LoggingException.fromException(exception)
 
             # Unable to determine qsdata. Using default values.
-            exception.addLogMessage(self.language(40600))
+            exception.addLogMessage("Unable to determine qsdata. Using default values.")
             exception.process(severity = logging.WARNING)
 
             return self.GetDefaultQSData(vidId, bitlyUrl)
@@ -871,7 +872,7 @@ class TG4Provider(BrightCoveProvider):
                 exception.addLogMessage(msg)
 
             # Error getting bit.ly API parameters. Using default values.
-            exception.addLogMessage(self.language(30037))
+            exception.addLogMessage("Error getting bit.ly API parameters. Using default values.")
             exception.process(severity = logging.WARNING)
 
             # Defaults
@@ -908,7 +909,7 @@ class TG4Provider(BrightCoveProvider):
                 exception = LoggingException.fromException(exception)
 
             # Error calling bit.ly API
-            exception.addLogMessage(self.language(30038))
+            exception.addLogMessage("Error callings bit.ly API")
             exception.process(severity = self.logLevel(logging.ERROR))
 
             raise exception
@@ -951,7 +952,7 @@ class TG4Provider(BrightCoveProvider):
                 exception = LoggingException.fromException(exception)
 
             # Error getting player url. Using default.
-            exception.addLogMessage(self.language(30039))
+            exception.addLogMessage("Error getting player url. Using default.")
             exception.process(severity = logging.WARNING)
             
             return self.GetDefaultFullLink(episodeId, series)
@@ -965,3 +966,4 @@ class TG4Provider(BrightCoveProvider):
 
 if __name__ == '__main__':
     tg4 = TG4Provider()
+    print tg4.ShowRootMenu()

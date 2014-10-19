@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import os
 import time
 import sys
@@ -13,8 +14,10 @@ import random
 import glob
 import re
 
-import xbmc
 import utils
+import logging
+
+logger = logging.getLogger(__name__)
 
 #TODO Separate HTTP and Cache classes. Separate subclasses for Post Binary and regular
 #==============================================================================
@@ -32,11 +35,11 @@ class HttpManager:
         
         self.defaultHeaders = {}
         
-        if hasattr(sys.modules["__main__"], "log"):
-            self.log = sys.modules["__main__"].log
-        else:
-            from utils import log
-            self.log = log
+        #if hasattr(sys.modules["__main__"], "log"):
+        #    self.log = sys.modules["__main__"].log
+        #else:
+        #    from utils import log
+        #    self.log = log
             
 
     def SetOpener(self, opener):
@@ -79,20 +82,20 @@ class HttpManager:
      unless we are processing a page directly from the web
     """
     def ifCacheLevel(self, logLevel):
-        self.log(u"self: %s" % unicode(self))
-        self.log(u"ifCacheLevel(%s)" % unicode(logLevel))
-        self.log(u"ifCacheLevel self.getFromCache: %s" % unicode(self.getFromCache))
+        logger.info(u"self: %s" % unicode(self))
+        logger.info(u"ifCacheLevel(%s)" % unicode(logLevel))
+        logger.info(u"ifCacheLevel self.getFromCache: %s" % unicode(self.getFromCache))
         if self.getFromCache and self.getGotFromCache():
-            self.log(u"return xbmc.LOGDEBUG")
-            return xbmc.LOGDEBUG;
+            logger.info(u"return logging.DEBUG")
+            return logging.DEBUG;
 
-        self.log(u"ifCacheLevel return logLevel: %s" % unicode(logLevel))
+        logger.info(u"ifCacheLevel return logLevel: %s" % unicode(logLevel))
         return logLevel
 
     def setGetFromCache(self, getFromCache):
-        self.log(u"self: %s" % unicode(self))
+        logger.info(u"self: %s" % unicode(self))
         self.getFromCache = getFromCache
-        self.log(u"setGetFromCache(%s)" % unicode(self.getFromCache))
+        logger.info(u"setGetFromCache(%s)" % unicode(self.getFromCache))
 
     def getGetFromCache(self):
         return self.getFromCache
@@ -105,10 +108,10 @@ class HttpManager:
         try:
             import requests
         except:
-            self.log(u"Can't import requests module", xbmc.LOGDEBUG)
+            logger.debug(u"Can't import requests module", logging.DEBUG)
             return None
         
-        self.log(u"(%s)" % (site + path), xbmc.LOGDEBUG)
+        logger.debug(u"(%s)" % (site + path), logging.DEBUG)
         
         try:
             if self.proxyConfig is not None: 
@@ -116,37 +119,36 @@ class HttpManager:
                 
             repeat = True
             firstTime = True
-            addon = sys.modules[u"__main__"].addon
     
             while repeat:
                 repeat = False
                 try:
                     url = "http://" + site + path
-                    headers = self.PrepareHeaders(addon, headers)
+                    headers = self.PrepareHeaders(headers)
     
                     self.log(u"headers: " + repr(headers))
                     response = requests.post(url, data = data, headers = headers)
                     
                 except ( requests.exceptions.RequestException ) as exception:
-                    self.log ( u'RequestException: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'RequestException: ' + unicode(exception))
                     raise exception
                 except ( requests.exceptions.ConnectionError ) as exception:
-                    self.log ( u'ConnectionError: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'ConnectionError: ' + unicode(exception))
                     raise exception
                 except ( requests.exceptions.HTTPError ) as exception:
-                    self.log ( u'HTTPError: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'HTTPError: ' + unicode(exception))
                     raise exception
                 except ( requests.exceptions.URLRequired ) as exception:
-                    self.log ( u'URLRequired: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'URLRequired: ' + unicode(exception))
                     raise exception
                 except ( requests.exceptions.TooManyRedirects ) as exception:
-                    self.log ( u'TooManyRedirects: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'TooManyRedirects: ' + unicode(exception))
                     raise exception
                 except ( requests.exceptions.Timeout ) as exception:
-                    self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+                    logger.error( u'Timeout exception: ' + unicode(exception))
                     if firstTime:
-                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
-                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
+#                        logger.error( u'Timeout exception: ' + unicode(exception))
+#                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
                         repeat = True
                     else:
                         """
@@ -154,7 +156,7 @@ class HttpManager:
                         When a socket timeout happens it executes twice.
                         The following code executes after the second timeout.
                         """
-                        self.log ( u'Timeout exception: ' + unicode(exception) + ", if you see this msg often consider changing your Socket Timeout settings", xbmc.LOGERROR )
+                        logger.error( "if you see this msg often consider changing your Socket Timeout settings")
                         raise exception
         
                     firstTime = False
@@ -164,8 +166,8 @@ class HttpManager:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Disable()
     
-        self.log (u"response.status, response.reason: " + unicode(response.status_code) + ', ' + response.reason, xbmc.LOGDEBUG)
-        self.log (u"response.getheaders(): " + utils.drepr(response.headers), xbmc.LOGDEBUG)
+        logger.debug(u"response.status, response.reason: " + unicode(response.status_code) + ', ' + response.reason)
+        logger.debug(u"response.getheaders(): " + utils.drepr(response.headers))
         
         response.raise_for_status()
     
@@ -180,7 +182,7 @@ class HttpManager:
 
 
     def PostBinary(self, site, path, data, headers = None):
-        self.log(u"(%s)" % (site + path), xbmc.LOGDEBUG)
+        logger.debug(u"(%s)" % (site + path))
         
         try:
             if self.proxyConfig is not None: 
@@ -188,7 +190,6 @@ class HttpManager:
                 
             repeat = True
             firstTime = True
-            addon = sys.modules[u"__main__"].addon
     
             while repeat:
                 repeat = False
@@ -196,21 +197,21 @@ class HttpManager:
                     if site.startswith(u"http://"):
                         site = site[7:]
                     
-                    headers = self.PrepareHeaders(addon, headers)
+                    headers = self.PrepareHeaders(headers)
     
-                    self.log(u"headers: " + repr(headers))
+                    logger.info(u"headers: " + repr(headers))
                     
                     conn = httplib.HTTPConnection(site)
                     conn.request("POST", path, data, headers)
                     response = conn.getresponse()
                 except ( httplib.HTTPException ) as exception:
-                    self.log ( u'HTTPError: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'HTTPError: ' + unicode(exception))
                     raise exception
                 except ( socket.timeout ) as exception:
-                    self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+                    logger.error( u'Timeout exception: ' + unicode(exception))
                     if firstTime:
-                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
-                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
+#                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+#                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
                         repeat = True
                     else:
                         """
@@ -218,7 +219,7 @@ class HttpManager:
                         When a socket timeout happens it executes twice.
                         The following code executes after the second timeout.
                         """
-                        self.log ( u'Timeout exception: ' + unicode(exception) + ", if you see this msg often consider changing your Socket Timeout settings", xbmc.LOGERROR )
+                        logger.error("if you see this msg often consider changing your Socket Timeout settings")
                         raise exception
         
                     firstTime = False
@@ -228,28 +229,27 @@ class HttpManager:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Disable()
     
-        self.log (u"response.status, response.reason: " + unicode(response.status) + ', ' + response.reason, xbmc.LOGDEBUG)
-        self.log (u"response.getheaders(): " + utils.drepr(response.getheaders()), xbmc.LOGDEBUG)
+        logger.debug(u"response.status, response.reason: " + unicode(response.status) + ', ' + response.reason)
+        logger.debug(u"response.getheaders(): " + utils.drepr(response.getheaders()))
         
         if response.status <> 200:
             return self.PostBinaryRequestsModule(site, path, data, headers)
         
         if response.getheader(u'content-encoding', u'') == u'gzip':
-            self.log (u"gzipped page", xbmc.LOGDEBUG)
+            logger.debug(u"gzipped page")
             gzipper = gzip.GzipFile(fileobj=StringIO.StringIO(response.read()))
             return gzipper.read()
         
         return response.read()
 
     def GetHttpLibResponse(self, site, path, headers = None):
-        self.log(u"(%s)" % (site + path), xbmc.LOGDEBUG)
+        logger.debug(u"(%s)" % (site + path))
 
         try:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Enable()
             repeat = True
             firstTime = True
-            addon = sys.modules["__main__"].addon
     
             while repeat:
                 repeat = False
@@ -257,22 +257,22 @@ class HttpManager:
                     if site.startswith("http://"):
                         site = site[7:]
                     
-                    headers = self.PrepareHeaders(addon, headers)
+                    headers = self.PrepareHeaders(headers)
     
-                    self.log("headers: " + repr(headers))
+                    logger.info("headers: " + repr(headers))
                     
                     conn = httplib.HTTPConnection(site)
                     conn.request("GET", path, headers = headers)
                     #conn.putheader('Connection','Keep-Alive')
                     response = conn.getresponse()
                 except ( httplib.HTTPException ) as exception:
-                    self.log ( u'HTTPError: ' + unicode(exception), xbmc.LOGERROR)
+                    logger.error( u'HTTPError: ' + unicode(exception))
                     raise exception
                 except ( socket.timeout ) as exception:
-                    self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+                    logger.error( u'Timeout exception: ' + unicode(exception))
                     if firstTime:
-                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
-                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
+#                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+#                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
                         repeat = True
                     else:
                         """
@@ -280,7 +280,7 @@ class HttpManager:
                         When a socket timeout happens it executes twice.
                         The following code executes after the second timeout.
                         """
-                        self.log ( u'Timeout exception: ' + unicode(exception) + ", if you see this msg often consider changing your Socket Timeout settings", xbmc.LOGERROR )
+                        logger.error( 'if you see this msg often consider changing your Socket Timeout settings')
                         raise exception
         
                     firstTime = False
@@ -290,8 +290,8 @@ class HttpManager:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Disable()
 
-        self.log (u"response.status, response.reason: " + unicode(response.status) + ', ' + response.reason, xbmc.LOGDEBUG)
-        self.log (u"response.getheaders(): " + utils.drepr(response.getheaders()), xbmc.LOGDEBUG)
+        logger.debug(u"response.status, response.reason: " + unicode(response.status) + ', ' + response.reason)
+        logger.debug(u"response.getheaders(): " + utils.drepr(response.getheaders()))
         
         return response
 
@@ -299,7 +299,7 @@ class HttpManager:
         response = self.GetHttpLibResponse(url, path, headers)
 
         if response.getheader(u'content-encoding', u'') == u'gzip':
-            self.log (u"gzipped page", xbmc.LOGDEBUG)
+            logger.debug(u"gzipped page")
             gzipper = gzip.GzipFile(fileobj=StringIO.StringIO(response.read()))
             return gzipper.read()
         
@@ -313,7 +313,7 @@ class HttpManager:
     """
     def GetWebPage(self, url, maxAge, values = None, headers = None, logUrl = True):
         if logUrl:
-            self.log(u"GetWebPage(%s)" % url, xbmc.LOGDEBUG)
+            logger.debug(u"GetWebPage(%s)" % url)
         maxAge = self.ifCacheMaxAge(maxAge)
         self.gotFromCache = False
         return self.GetURL( url, maxAge, values, headers, logUrl )
@@ -321,7 +321,7 @@ class HttpManager:
     #==============================================================================
     
     def GetWebPageDirect(self, url, values = None, headers = None, logUrl = True):
-        self.log(u"GetWebPageDirect(%s)" % url, xbmc.LOGDEBUG)
+        logger.debug(u"GetWebPageDirect(%s)" % url)
         return self.GetWebPage(url, 0, values, headers, logUrl)
 
     #==============================================================================
@@ -332,14 +332,14 @@ class HttpManager:
     #==============================================================================
     
     def SetCacheDir(self,  cacheDir ):
-        self.log (u"cacheDir: " + cacheDir, xbmc.LOGDEBUG)    
+        logger.debug(u"cacheDir: " + cacheDir)    
         self.cacheDir = cacheDir
         if not os.path.isdir(cacheDir):
             os.makedirs(cacheDir)
     
     #==============================================================================
     def _Cache_GetFromFlag(self):
-        self.log(u"_Cache_GetFromFlag() - gotFromCache = %s" % unicode(self.gotFromCache))
+        logger.info(u"_Cache_GetFromFlag() - gotFromCache = %s" % unicode(self.gotFromCache))
         return self.gotFromCache
     
     def _CheckCacheDir(self):
@@ -352,7 +352,7 @@ class HttpManager:
     def GetCharset(self, response):
         if u'content-type' in response.info():
             contentType = response.info()[u'content-type']
-            self.log (u"content-type: " + contentType, xbmc.LOGDEBUG)
+            logger.debug(u"content-type: " + contentType)
 
             typeItems = contentType.split('; ')
             pattern = "charset=(.+)"
@@ -370,7 +370,7 @@ class HttpManager:
     def GetMaxAge(self, response):
         if u'cache-control' in response.info():
             cacheControl = response.info()[u'cache-control']
-            self.log (u"cache-control: " + cacheControl, xbmc.LOGDEBUG)
+            logger.debug(u"cache-control: " + cacheControl)
             
             cacheItems = cacheControl.split(', ')
             maxAgeLen = len('max-age=')
@@ -392,7 +392,7 @@ class HttpManager:
         maxAge = self.GetMaxAge(response)
         
         if u'content-encoding' in response.info() and response.info()[u'content-encoding'] == u'gzip':
-            self.log (u"gzipped page", xbmc.LOGDEBUG)
+            logger.debug(u"gzipped page")
             gzipper = gzip.GzipFile(fileobj=StringIO.StringIO(response.read()))
             data =  gzipper.read()
         else:
@@ -405,7 +405,7 @@ class HttpManager:
             except:
                 charset = 'latin1'
             
-        self.log (u"charset, maxAge: " + unicode((charset, maxAge)), xbmc.LOGDEBUG)
+        logger.debug(u"charset, maxAge: " + unicode((charset, maxAge)))
         
         return data.decode(charset), maxAge
         
@@ -414,7 +414,7 @@ class HttpManager:
         global lastCode
     
         if logUrl:
-            self.log (u"url: " + url, xbmc.LOGDEBUG)    
+            logger.debug(u"url: " + url)    
 
         try:    
             if self.proxyConfig is not None: 
@@ -422,7 +422,6 @@ class HttpManager:
 
             repeat = True
             firstTime = True
-            addon = sys.modules["__main__"].addon
     
             while repeat:
                 repeat = False
@@ -432,11 +431,11 @@ class HttpManager:
                     postData = None
                     if values is not None:
                         postData = urllib.urlencode(values)
-                        self.log("postData: " + repr(postData))
+                        logger.info("postData: " + repr(postData))
                     
-                    headers = self.PrepareHeaders(addon, headers)
+                    headers = self.PrepareHeaders(headers)
                     
-                    self.log("headers: " + repr(headers), xbmc.LOGDEBUG)
+                    logger.debug("headers: " + repr(headers))
                     
                     request = urllib2.Request(url, postData, headers)
                     response = urllib2.urlopen(request)
@@ -452,19 +451,19 @@ class HttpManager:
                     cookiejar.save(COOKIE_PATH)
                     """
                 except ( urllib2.HTTPError ) as err:
-                    self.log ( u'HTTPError: ' + unicode(err), xbmc.LOGERROR)
+                    logger.error( u'HTTPError: ' + unicode(err))
                     lastCode = err.code
-                    self.log (u"lastCode: " + unicode(lastCode), xbmc.LOGDEBUG)
+                    logger.error(u"lastCode: " + unicode(lastCode))
                     raise err
                 except ( urllib2.URLError ) as err:
-                    self.log ( u'URLError: ' + unicode(err), xbmc.LOGERROR )
+                    logger.error( u'URLError: ' + unicode(err))
                     lastCode = -1
                     raise err
                 except ( socket.timeout ) as exception:
-                    self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+                    logger.error( u'Timeout exception: ' + unicode(exception))
                     if firstTime:
-                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
-                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
+#                        self.log ( u'Timeout exception: ' + unicode(exception), xbmc.LOGERROR )
+#                        xbmc.executebuiltin(u'XBMC.Notification(%s, %s)' % (u'Socket timed out', 'Trying again'))
                         repeat = True
                     else:
                         """
@@ -472,7 +471,7 @@ class HttpManager:
                         When a socket timeout happens it executes twice.
                         The following code executes after the second timeout.
                         """
-                        self.log ( u'Timeout exception: ' + unicode(exception) + ", if you see this msg often consider changing your Socket Timeout settings", xbmc.LOGERROR )
+                        logger.error( "if you see this msg often consider changing your Socket Timeout settings")
                         raise exception
         
                     firstTime = False
@@ -495,15 +494,15 @@ class HttpManager:
             if self.proxyConfig is not None: 
                 self.proxyConfig.Disable()
     
-        self.log (u"response.info(): " + utils.drepr(response.info().items()), xbmc.LOGDEBUG)
+        logger.debug(u"response.info(): " + utils.drepr(response.info().items()))
         lastCode = response.getcode()
-        self.log (u"lastCode: " + unicode(lastCode), xbmc.LOGDEBUG)
+        logger.debug(u"lastCode: " + unicode(lastCode))
 
         return response
         
     #==============================================================================
     
-    def PrepareHeaders(self, addon, newHeaders):
+    def PrepareHeaders(self, newHeaders):
         headers = {}
         headers.update(self.defaultHeaders)
 
@@ -512,7 +511,7 @@ class HttpManager:
 
         if self.isForwardedForIP is True:
             headers[u'X-Forwarded-For'] = self.forwardedForIP
-            self.log(u"Using header 'X-Forwarded-For': " + self.forwardedForIP)
+            logger.info(u"Using header 'X-Forwarded-For': " + self.forwardedForIP)
             
         return headers
             
@@ -522,7 +521,7 @@ class HttpManager:
         global lastCode
     
         if lastCode <> 404 and data is not None and len(data) > 0:    # Don't cache "page not found" pages, or empty data
-            self.log (u"Add page to cache", xbmc.LOGDEBUG)
+            logger.debug(u"Add page to cache")
 
             self._Cache_Add( url, data, values, expiryTime, logUrl )
     
@@ -531,24 +530,24 @@ class HttpManager:
         global lastCode
     
         if logUrl:
-            self.log (url, xbmc.LOGDEBUG)
+            logger.debug(url)
         # If no cache dir has been specified then return the data without caching
         if self._CheckCacheDir() == False:
-            self.log (u"Not caching HTTP", xbmc.LOGDEBUG)
+            logger.debug(u"Not caching HTTP")
             data, responseMaxAge = self._GetURL_NoCache( url, values, headers, logUrl)
             return data
     
         currentTime = int(round(time.time()))
         
         if ( maxAgeSeconds > 0 ):
-            self.log (u"maxAgeSeconds: " + unicode(maxAgeSeconds), xbmc.LOGDEBUG)
+            logger.debug(u"maxAgeSeconds: " + unicode(maxAgeSeconds))
             # Is this URL in the cache?
             expiryString = self.GetExpiryTimeForUrl(url, values, logUrl)
             if expiryString is not None:
-                self.log (u"expiryString: " + unicode(expiryString), xbmc.LOGDEBUG)
+                logger.debug(u"expiryString: " + unicode(expiryString))
                 # We have file in cache,_GetURL_NoCache but is it too old?
                 if currentTime > int(expiryString):
-                    self.log (u"Cached version is too old", xbmc.LOGDEBUG)
+                    logger.debug(u"Cached version is too old")
                     # Too old, so need to get it again
                     data, responseMaxAge = self._GetURL_NoCache( url, values, headers, logUrl)
     
@@ -565,14 +564,14 @@ class HttpManager:
                     # Return data
                     return data
                 else:
-                    self.log (u"Get page from cache", xbmc.LOGDEBUG)
+                    logger.debug(u"Get page from cache")
                     # Get it from cache
                     data = self._Cache_GetData( url, values, expiryString, logUrl)
                     
                     if (data <> 0):
                         return data
                     else:
-                        self.log(u"Error retrieving page from cache. Zero length page. Retrieving from web.")
+                        logger.info(u"Error retrieving page from cache. Zero length page. Retrieving from web.")
         
         # maxAge = 0 or URL not in cache, so get it
         data, responseMaxAge = self._GetURL_NoCache( url, values, headers, logUrl)
@@ -613,7 +612,7 @@ class HttpManager:
         cacheKey = self._Cache_CreateKey( url, values, logUrl )
         filename = cacheKey + "_" + expiryString
         cacheFileFullPath = os.path.join( self.cacheDir, filename )
-        self.log (u"Cache file: %s" % cacheFileFullPath, xbmc.LOGDEBUG)
+        logger.debug(u"Cache file: %s" % cacheFileFullPath)
         f = codecs.open(cacheFileFullPath, u"r", u'utf-8')
         data = f.read()
         f.close()
@@ -630,7 +629,7 @@ class HttpManager:
         cacheKey = self._Cache_CreateKey( url, values, logUrl )
         filename = cacheKey + "_" + str(currentTime)
         cacheFileFullPath = os.path.join( self.cacheDir, filename )
-        self.log (u"Cache file: %s" % cacheFileFullPath, xbmc.LOGDEBUG)
+        logger.debug(u"Cache file: %s" % cacheFileFullPath)
         f = codecs.open(cacheFileFullPath, u"w", u'utf-8')
         f.write(data)
         f.close()
@@ -643,31 +642,31 @@ class HttpManager:
                 url = url + "?" + urllib.urlencode(values)
 
             if logUrl:
-                self.log("url: " + url)
+                logger.info("url: " + url)
             from hashlib import md5
             return md5(url).hexdigest()
         except:
             import md5
             if logUrl:
-                self.log("url to be hashed: " + url)
+                logger.info("url to be hashed: " + url)
             return  md5.new(url).hexdigest()
     
     #==============================================================================
     
     def IsDeleteFile(self, filename, filenameLen, currentTime):
        if (len(filename) != filenameLen):
-           self.log("Invalid cache filename: " + filename, xbmc.LOGWARNING)
+           logger.warning("Invalid cache filename: " + filename)
            return True
        
        match=re.search( u"(.{32})_(\d{10})", filename)
 
        if match is None:
-           self.log("Invalid cache filename: " + filename, xbmc.LOGWARNING)
+           logger.warning("Invalid cache filename: " + filename)
            return True
 
        expireTime = int(match.group(2))
        if currentTime > expireTime:
-           self.log("Expired cache file: " + filename, xbmc.LOGDEBUG)
+           logger.debug("Expired cache file: " + filename)
            return True
 
        return False
@@ -677,7 +676,7 @@ class HttpManager:
     def ClearCache(self):
         files = glob.iglob( self.cacheDir + "/*" )
         for fileFullPath in files:
-            self.log("Deleting cache fileFullPath: " + fileFullPath, xbmc.LOGDEBUG)
+            logger.debug("Deleting cache fileFullPath: " + fileFullPath)
             if os.path.exists(fileFullPath):
                 os.remove(fileFullPath)
         
@@ -692,7 +691,7 @@ class HttpManager:
         for fileFullPath in files:
             filename = os.path.basename(fileFullPath)
             if self.IsDeleteFile(filename, filenameLen, currentTime):
-                self.log("Deleting cache fileFullPath: " + fileFullPath, xbmc.LOGDEBUG)
+                logger.debug("Deleting cache fileFullPath: " + fileFullPath)
                 if os.path.exists(fileFullPath):
                     os.remove(fileFullPath)
         

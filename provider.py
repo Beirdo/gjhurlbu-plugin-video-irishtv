@@ -1,6 +1,5 @@
 #! /usr/bin/python
-# vim:ts=4:sw=4:ai:et:si:sts=4
-# -*- coding: utf-8 -*-
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import os
 import sys
 import re
@@ -153,13 +152,13 @@ class Provider(object):
             logger.info(u"Exception getting country code: " + repr(exception))
             
             
-    def initialise(self, httpManager, baseurl, pluginHandle, addon, language, dataFolder, resourcePath):
+    def initialise(self, httpManager, baseurl, pluginHandle, addon, dataFolder, resourcePath, config):
         self.baseurl = baseurl
         self.pluginHandle = pluginHandle
         self.addon = addon
-        self.language = language
         self.dataFolder = dataFolder
         self.resourcePath = resourcePath
+        self.config = config
         
         self.METHOD_IP_FORWARD = 1 
         self.METHOD_PROXY = 2
@@ -244,16 +243,16 @@ class Provider(object):
         
         bitRates = {
             u"":None,                            #Setting not set, so use default value
-            self.language(30070):None,           #Default
-            self.language(30071):-1,             #Lowest Available
-            self.language(30073):200 * 1024,     #Max 200kps
-            self.language(30074):350 * 1024,     #Max 350kps
-            self.language(30075):500 * 1024,     #Max 500kps
-            self.language(30076):750 * 1024,     #Max 750kps
-            self.language(30077):1000 * 1024,    #Max 1000kps
-            self.language(30078):1500 * 1024,    #Max 1500kps
-            self.language(30079):2000 * 1024,    #Max 2000kps
-            self.language(30072):20000 * 1024    #Highest Available
+            "Default":None,           #Default
+            "Lowest Available":-1,             #Lowest Available
+            "Max 200kps":200 * 1024,     #Max 200kps
+            "Max 350kps":350 * 1024,     #Max 350kps
+            "Max 500kps":500 * 1024,     #Max 500kps
+            "Max 750kps":750 * 1024,     #Max 750kps
+            "Max 1000kps":1000 * 1024,    #Max 1000kps
+            "Max 1500kps":1500 * 1024,    #Max 1500kps
+            "Max 2000kps":2000 * 1024,    #Max 2000kps
+            "Highest Available":20000 * 1024    #Highest Available
             }
 
         bitrate_string = unicode(self.addon.getSetting(u'bitrate'))
@@ -322,16 +321,17 @@ class Provider(object):
             if self.dialog.iscanceled():
                 return False
             
-            if ( action == 1 ):
-                # Play
-                # "Preparing to play video"
-                self.dialog.update(50, self.language(30085))
-                self.Play(infoLabels, thumbnail, rtmpVar, url, subtitles, resumeKey, resumeFlag)
+            #if ( action == 1 ):
+            #    # Play
+            #    # "Preparing to play video"
+            #    self.dialog.update(50, self.language(30085))
+            #    self.Play(infoLabels, thumbnail, rtmpVar, url, subtitles, resumeKey, resumeFlag)
         
-            elif ( action == 0 ):
+            if ( action == 0 ):
                     # Download
                     # "Preparing to download video"
-                self.dialog.update(50, self.language(30086))
+                #self.dialog.update(50, self.language(30086))
+                logging.info("Preparing to download video")
                 self.Download(rtmpVar, defaultFilename, subtitles)
     
             return True
@@ -340,7 +340,7 @@ class Provider(object):
                 exception = LoggingException.fromException(exception)
     
             # Error playing or downloading episode %s
-            exception.process(self.language(30051) % u'', u'', self.logLevel(logging.ERROR))
+            exception.process("Error downloading episode %s" % u'', u'', self.logLevel(logging.ERROR))
             return False
     
     # If the programme is in multiple parts, then second, etc. parts to the playList
@@ -488,7 +488,7 @@ class Provider(object):
                     exception = LoggingException.fromException(exception)
             
                 # Error getting subtitles
-                exception.addLogMessage(self.language(30970))
+                exception.addLogMessage("Error getting subtitles")
                 exception.process(u'', u'', severity = logging.WARNING)
 
         #if self.dialog.iscanceled():
@@ -534,7 +534,8 @@ class Provider(object):
     def GetDownloadSettings(self, defaultFilename):
     
         # Ensure rtmpdump has been located
-        rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
+        #rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
+        rtmpdumpPath = self.config.get("general", 'rtmpdump_path', '').decode(u'utf8')
         #if ( rtmpdumpPath is u'' ):
             #dialog = xbmcgui.Dialog()
             # Download Error - You have not located your rtmpdump executable...
@@ -548,7 +549,8 @@ class Provider(object):
             return
         
         # Ensure default download folder is defined
-        downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
+        #downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
+        downloadFolder = self.config.get("general", 'download_folder', '').decode(u'utf8')
         #if downloadFolder is u'':
             #d = xbmcgui.Dialog()
             ## Download Error - You have not set the default download folder.\n Please update the self.addon settings and try again.',u'',u'')
@@ -666,7 +668,7 @@ class Provider(object):
                 exception.addLogMessage(msg)
                 
             # Error getting web page %s
-            exception.addLogMessage(self.language(30050) + u": " + url)
+            exception.addLogMessage("Error getting web page: " + url)
             raise exception
     
     def PlayVideoWithDialog(self, method, parameters):
