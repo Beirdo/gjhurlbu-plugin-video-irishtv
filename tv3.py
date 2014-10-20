@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
+#! /usr/bin/python
+# vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import re
 import sys
 from time import mktime,strptime
 from datetime import timedelta
 from datetime import date
 
-import xbmcplugin
-import xbmcgui
-import xbmc
+#import xbmcplugin
+#import xbmcgui
+#import xbmc
 
 import mycgi
 import utils
@@ -16,13 +17,16 @@ import rtmp
 import zlib
 
 from provider import Provider
-from resumeplayer import ResumePlayer
-from watched import WatchedPlayer
+#from resumeplayer import ResumePlayer
+#from watched import WatchedPlayer
 
 
 from BeautifulSoup import BeautifulSoup, NavigableString
 
 import HTMLParser
+import logging
+
+logger = logging.getLogger(__name__)
 
 urlRoot     = u"http://www.tv3.ie"
 rootMenuUrl = u"http://www.tv3.ie/3player"
@@ -40,14 +44,14 @@ class TV3Provider(Provider):
         return u"TV3"
 
     def GetPlayer(self, pid, live, playerName):
-        if self.watchedEnabled:
-            player = WatchedPlayer()
-            player.initialise(live, playerName, self.GetWatchedPercent(), pid, self.resumeEnabled, self.log)
-            return player
-        elif self.resumeEnabled:
-            player = ResumePlayer()
-            player.init(pid, live, playerName)
-            return player
+#        if self.watchedEnabled:
+#            player = WatchedPlayer()
+#            player.initialise(live, playerName, self.GetWatchedPercent(), pid, self.resumeEnabled, self.log)
+#            return player
+#        elif self.resumeEnabled:
+#            player = ResumePlayer()
+#            player.init(pid, live, playerName)
+#            return player
         
         return super(TV3Provider, self).GetPlayer(pid, live, playerName)
 
@@ -55,16 +59,16 @@ class TV3Provider(Provider):
         return super(TV3Provider, self).ExecuteCommand(mycgi)
 
     def ShowRootMenu(self):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         try:
             html = None
             html = self.httpManager.GetWebPage(rootMenuUrl, 300)
     
             if html is None or html == u'':
                 # Error getting %s Player "Home" page
-                logException = LoggingException(logMessage = self.language(30001) % self.GetProviderId())
+                logException = LoggingException(logMessage = "Error getting %s Player Home page" % self.GetProviderId())
                 # 'Cannot show TV3 root menu', Error getting TV3 Player "Home" page
-                logException.process(self.language(30002) % self.GetProviderId(), self.language(30001) % self.GetProviderId(), self.logLevel(xbmc.LOGERROR))
+                logException.process("Cannot show TV3 root menu", "Error getting %s Player Home page" % self.GetProviderId(), self.logLevel(logging.ERROR))
                 #raise logException
                 return False
     
@@ -73,19 +77,20 @@ class TV3Provider(Provider):
     
             if len(categories) == 0:
                 # "Can't find dropdown-programmes"
-                logException = LoggingException(logMessage = self.language(30003))
+                logException = LoggingException(logMessage = "Can't find dropdown-programmes")
                 # 'Cannot show TV3 root menu', Error parsing web page
-                logException.process(self.language(30002), self.language(30780), self.logLevel(xbmc.LOGERROR))
+                logException.process("Cannot show TV3 root menu", "Error processing web page", self.logLevel(logging.ERROR))
                 #raise logException
                 return False
             
             listItems = []
     
             # Search
-            newLabel = self.language(30500)
+            newLabel = "Search"
             thumbnailPath = self.GetThumbnailPath(newLabel)
-            newListItem = xbmcgui.ListItem( label=newLabel )
-            newListItem.setThumbnailImage(thumbnailPath)
+            newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
+#            newListItem.setThumbnailImage(thumbnailPath)
             url = self.GetURLStart() + u'&search=1'
             listItems.append( (url, newListItem, True) )
     
@@ -93,23 +98,25 @@ class TV3Provider(Provider):
             self.AddCategories(listItems, categories)        
     
             # All Shows - A to Z
-            newLabel = self.language(30061)
+            newLabel = "All Shows - A to Z"
             thumbnailPath = self.GetThumbnailPath(newLabel)
-            newListItem = xbmcgui.ListItem( label=newLabel )
-            newListItem.setThumbnailImage(thumbnailPath)
+            newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
+#            newListItem.setThumbnailImage(thumbnailPath)
             url = self.GetURLStart() + u'&allShows=1'
             listItems.append( (url, newListItem, True) )
 
             # All Shows - By Date
-            newLabel = self.language(30062)
+            newLabel = "All Shows - By Date"
             thumbnailPath = self.GetThumbnailPath(newLabel)
-            newListItem = xbmcgui.ListItem( label=newLabel )
-            newListItem.setThumbnailImage(thumbnailPath)
+            newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
+#            newListItem.setThumbnailImage(thumbnailPath)
             url = self.GetURLStart() + u'&calendar=1'
             listItems.append( (url, newListItem, True) )
     
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -119,12 +126,11 @@ class TV3Provider(Provider):
                 exception.addLogMessage(msg)
                 
             # Cannot show root menu
-            exception.addLogMessage(self.language(30010))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.addLogMessage("Cannot show root menu")
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
-        
-        return True
+        return listItems
 
     # listshows: If '1' list the shows on the main page, otherwise process the sidebar. The main page links to programmes or specific episodes, the sidebar links to categories or sub-categories
     # listavailable: If '1' process the specified episode as one of at least one episodes availabe, i.e. list all episodes available
@@ -133,7 +139,7 @@ class TV3Provider(Provider):
 
     def ParseCommand(self, mycgi):
         (category, search, allShows, calendar, date, page, thumbnail, resume) = mycgi.Params( u'category', u'search', u'allShows', u'calendar', u'date', u'page', u'thumbnail', u'resume' )
-        self.log(u"category: %s, search: %s, allShows: %s, calendar: %s, date: %s, page: %s, thumbnail: %s, resume: %s" % (category, str(search), str(allShows), calendar, date, page, thumbnail, str(resume)), xbmc.LOGDEBUG)
+        logger.debug(u"category: %s, search: %s, allShows: %s, calendar: %s, date: %s, page: %s, thumbnail: %s, resume: %s" % (category, str(search), str(allShows), calendar, date, page, thumbnail, str(resume)))
 
         if search <> u'':
             return self.DoSearch()
@@ -155,14 +161,14 @@ class TV3Provider(Provider):
             
         if page == u'':
             # "Can't find 'page' parameter "
-            logException = LoggingException(logMessage = self.language(30030))
+            logException = LoggingException(logMessage = "Cannot find 'page' parameter")
             # 'Cannot proceed', Error processing command
-            logException.process(self.language(30755), self.language(30780), self.logLevel(xbmc.LOGERROR))
+            logException.process("Cannot proceed", "Error processing web page", self.logLevel(logging.ERROR))
             return False
 
-        self.log(u"page = %s" % page, xbmc.LOGDEBUG)
+        logger.debug(u"page = %s" % page)
         page = mycgi.URLUnescape(page)
-        self.log(u"mycgi.URLUnescape(page) = %s" % page, xbmc.LOGDEBUG)
+        logger.debug(u"mycgi.URLUnescape(page) = %s" % page)
 
         if u' ' in page:
             page = page.replace(u' ', u'%20')
@@ -179,9 +185,9 @@ class TV3Provider(Provider):
                 exception = LoggingException.fromException(exception)
             
             # "Error playing or downloading episode %s"
-            exception.addLogMessage(self.language(30051) % u"")
+            exception.addLogMessage("Error playing or downloading episode %s" % u"")
             # "Error processing video"
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
                 
@@ -201,8 +207,8 @@ class TV3Provider(Provider):
             exception = LoggingException.fromException(exception)
     
             # Error processing categories
-            exception.addLogMessage(self.language(30058))
-            exception.process(severity = self.logLevel(xbmc.LOGWARNING))
+            exception.addLogMessage("Error processing categories")
+            exception.process(severity = self.logLevel(logging.WARNING))
             
         return categories
     
@@ -228,12 +234,13 @@ class TV3Provider(Provider):
         for category in categories:
             newLabel = category
             thumbnailPath = self.GetThumbnailPath(newLabel.replace(u' ', u''))
-            newListItem = xbmcgui.ListItem( label=newLabel)
-            newListItem.setThumbnailImage(thumbnailPath)
+            newListItem = { 'label' : newLabel, 'thumbnail' : thumbnailPath }
+#            newListItem = xbmcgui.ListItem( label=newLabel)
+#            newListItem.setThumbnailImage(thumbnailPath)
 
             url = self.GetURLStart() + u'&category=' + mycgi.URLEscape(category)
 
-            self.log(u"url: %s" % url, xbmc.LOGDEBUG)
+            logger.debug(u"url: %s" % url)
             listItems.append( (url,newListItem,True) )
 
     def GetNameFromGridshow(self, gridshow):
@@ -244,7 +251,7 @@ class TV3Provider(Provider):
                 return u"programme"
         
     def ShowCategory(self, category):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         html = None
         html = self.httpManager.GetWebPage(rootMenuUrl, 300)
         """
@@ -288,13 +295,14 @@ class TV3Provider(Provider):
 
                 programme = self.GetNameFromGridshow(gridshow)
                 # "Error processing <programme>"
-                exception.addLogMessage(self.language(30063) % programme + u"\n" + repr(gridshow))
-                exception.process(self.language(30063) % programme, u"", xbmc.LOGWARNING)
+                exception.addLogMessage("Error processing %s" % programme + u"\n" + repr(gridshow))
+                exception.process("Error processing %s" % programme, u"", logging.WARNING)
             
-        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-        return True
+#        return True
+        return listItems
     
 #==============================================================================
     def AddEpisodeItem(self, label, thumbnail, infoLabels, page, listItems):
@@ -315,7 +323,7 @@ class TV3Provider(Provider):
 
 
     def GetAllShowsLink(self, soup): 
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         
         try:
             anchor = soup.find(u'div', {u'id':u'bottombar'}).find(lambda tag: tag.name == u'a' and tag.text == u'All Shows')
@@ -326,8 +334,8 @@ class TV3Provider(Provider):
                 exception = LoggingException.fromException(exception)
             
             # Unable to determine "All Shows" URL. Using default: %s
-            exception.addLogMessage(self.language(30059) % allShowsDefaultUrl)
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.addLogMessage("Unable to determine 'All Shows' URL.  Using default %s" % allShowsDefaultUrl)
+            exception.process(severity = logging.WARNING)
             return allShowsDefaultUrl
 
     def AddAllShowListItem(self, title, video, listItems, thumbnail = None):
@@ -347,7 +355,7 @@ class TV3Provider(Provider):
 
             
     def ListAToZ(self, page = None):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         """
             <div id="g1" class="gridshow">
                 <a href="javascript:void(0)">
@@ -403,9 +411,12 @@ class TV3Provider(Provider):
                             
                             infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description}
         
-                            newListItem = xbmcgui.ListItem( label=title )
-                            newListItem.setInfo(u'video', infoLabels)
-                            newListItem.setThumbnailImage(thumbnailPath)
+                            newListItem = { 'label' : title,
+                                            'thumbnail' : thumbnailPath,
+                                            'videoInfo' : infoLabels }
+#                            newListItem = xbmcgui.ListItem( label=title )
+#                            newListItem.setInfo(u'video', infoLabels)
+#                            newListItem.setThumbnailImage(thumbnailPath)
             
                             url = self.GetURLStart() + u'&thumbnail=' + mycgi.URLEscape(thumbnailPath) + u'&allShows=1'
                             listItems.append( (url,newListItem,True) )
@@ -415,8 +426,8 @@ class TV3Provider(Provider):
                         
                         programme = self.GetNameFromGridshow(gridshow)
                         # "Error processing <programme>"
-                        exception.addLogMessage(logMessage = self.language(30063) % programme + u"\n" + repr(gridshow))
-                        exception.process(self.language(30063) % programme, "", xbmc.LOGWARNING)
+                        exception.addLogMessage(logMessage = "Error processing %s" % programme + u"\n" + repr(gridshow))
+                        exception.process("Error processing %s" % programme, "", logging.WARNING)
                         
             else:
                 imageTag = soup.find(src=page)
@@ -437,12 +448,12 @@ class TV3Provider(Provider):
                             exception = LoggingException.fromException(exception)
                         
                         # "Error processing <programme>"
-                        exception.addLogMessage(logMessage = self.language(30063) % title + u"\n" + repr(video))
-                        exception.process(self.language(30063) % title, u"", xbmc.LOGWARNING)
+                        exception.addLogMessage(logMessage = "Error processing %s"% title + u"\n" + repr(video))
+                        exception.process("Error processing %s" % title, u"", logging.WARNING)
                         
 
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -452,11 +463,11 @@ class TV3Provider(Provider):
                 exception.addLogMessage(msg)
                 
             # Error processing "Show All" menu
-            exception.addLogMessage(self.language(30023))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.addLogMessage("Error processing 'Show All' menu")
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
-        return True
+        return listItems
         
 #==============================================================================
     def AddEpisodeToSearchList(self, listItems, video):
@@ -474,7 +485,7 @@ class TV3Provider(Provider):
 #==============================================================================
 
     def ListSearchShows(self, html):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         listItems = []
 
         soup = BeautifulSoup(html)
@@ -488,18 +499,19 @@ class TV3Provider(Provider):
                     exception = LoggingException.fromException(exception)
             
                 # "Error processing search result"
-                exception.addLogMessage(logMessage = self.language(30069) + u"\n" + repr(video))
-                exception.process(self.language(30069), u"", xbmc.LOGWARNING)
+                exception.addLogMessage(logMessage = "Error processing search result" + u"\n" + repr(video))
+                exception.process("Error processing search result", u"", logging.WARNING)
             
 
-        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
         
 
-        return True
+#        return True
+        return listItems
 
     def GetSWFPlayer(self, flowPlayerScript):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         
         try:
             swfPlayer = utils.findString( u"TV3Provider::GetSWFPlayer()", u"flowplayer\(\"flowPlayer\",\s+{src:\s+\"(.+?)\"", flowPlayerScript)
@@ -514,13 +526,13 @@ class TV3Provider(Provider):
                 exception = LoggingException.fromException(exception)
             
             # Unable to determine swfPlayer URL. Using default: %s
-            exception.addLogMessage(self.language(30520) % swfDefault)
-            exception.process(severity = xbmc.LOGWARNING)
+            exception.addLogMessage("Unable to determine swfPlayer URL. Using default %s" % swfDefault)
+            exception.process(severity = logging.WARNING)
             return swfDefault
 
 #==============================================================================
     def GetEpisodeInfoCategory(self, gridshow):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
 
         """
         <div id="gridshow">
@@ -545,13 +557,13 @@ class TV3Provider(Provider):
 
         infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description}
 
-        self.log(u"infoLabels: %s" % infoLabels, xbmc.LOGDEBUG)
+        logger.debug(u"infoLabels: %s" % infoLabels)
         return infoLabels
 
 #==============================================================================
     #TODO Add date
     def GetEpisodeInfo(self, soup):
-        self.log("", xbmc.LOGDEBUG)
+        logger.debug("")
 
         htmlparser = HTMLParser.HTMLParser()
         
@@ -560,12 +572,12 @@ class TV3Provider(Provider):
 
         infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description}
 
-        self.log(u"infoLabels: %s" % infoLabels, xbmc.LOGDEBUG)
+        self.log(u"infoLabels: %s" % infoLabels, logging.DEBUG)
         return infoLabels
 
 #==============================================================================
     def InitialiseRTMP(self, soup):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
 
         try:
             flowPlayerScript = unicode(soup.find(u'div', {u'id':u'flowPlayer'}).findNextSibling(u'script').text)
@@ -585,15 +597,15 @@ class TV3Provider(Provider):
                 exception = LoggingException.fromException(exception)
 
             # Error getting RTMP data
-            exception.addLogMessage(self.language(30057))
+            exception.addLogMessage("Error getting RTMP data")
             raise exception
         
     def PlayEpisode(self, page, resumeFlag):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
 
         try:
             html = None
-            self.log(u"urlRoot: " + urlRoot + u", page: " + page )
+            logger.info(u"urlRoot: " + urlRoot + u", page: " + page )
             html = self.httpManager.GetWebPage( urlRoot + page, 1800 )
             #raise Exception("test1", "test2")
         except (Exception) as exception:
@@ -605,8 +617,8 @@ class TV3Provider(Provider):
                 exception.addLogMessage(msg)
                 
             # Error getting web page
-            exception.addLogMessage(self.language(30050))
-            exception.process(severity = self.logLevel(xbmc.LOGERROR))
+            exception.addLogMessage("Error getting web page")
+            exception.process(severity = self.logLevel(logging.ERROR))
             return False
 
         soup = BeautifulSoup(html)
@@ -615,10 +627,11 @@ class TV3Provider(Provider):
         
         if ageCheck is not None:
             
-            if self.dialog.iscanceled():
-                return False
+#            if self.dialog.iscanceled():
+#                return False
             # "Getting episode info"
-            self.dialog.update(25, self.language(30084))
+            logger.info("Getting episode info")
+#            self.dialog.update(25, self.language(30084))
             try:
                 html = None
                 html = self.httpManager.GetWebPage( urlRoot + page, 1800, values = {u'age_ok':'1'} )
@@ -631,10 +644,10 @@ class TV3Provider(Provider):
                     exception.addLogMessage(msg)
                     
                 # Error getting web page: %s
-                exception.addLogMessage(self.language(30050) + u": " + ( urlRoot + page ) )
+                exception.addLogMessage("Error getting web page: " + ( urlRoot + page ) )
     
                 # Error getting web page
-                exception.process(self.language(30050), u'', severity = self.logLevel(xbmc.LOGERROR))
+                exception.process("Error getting web page", u'', severity = self.logLevel(logging.ERROR))
                 return False
     
         rtmpVar = self.InitialiseRTMP(soup)
@@ -649,7 +662,7 @@ class TV3Provider(Provider):
 #==============================================================================
     #TODO Handle exceptions?
     def DoSearchQuery( self, query ):
-        self.log(u"query: %s" % query, xbmc.LOGDEBUG)
+        logger.debug(u"query: %s" % query)
         
         values = {u'queryString':query, u'limit':20}
 #        headers = {'DNT':'1', 'X-Requested-With':'XMLHttpRequest' }
@@ -661,20 +674,18 @@ class TV3Provider(Provider):
         html = self.httpManager.GetWebPage( searchUrl, 1800, values = values, headers = headers )
         if html is None or html == u'':
             # Data returned from web page: %s, is: '%s'
-            logException = LoggingException(logMessage = self.language(30060) % ( searchUrl, html ))
+            logException = LoggingException(logMessage = "Data returned from web page: %s, is: '%s'" % ( searchUrl, html ))
 
             # Error getting web page
-            logException.process(self.language(30050), u'', self.logLevel(xbmc.LOGERROR))
+            logException.process("Error getting web page", u'', self.logLevel(logging.ERROR))
             return False
 
         # Fix fcuked up TV3 HTML formatting
         html = html.replace(u"<h3 id='search_heading'>Videos</h2>", "<h3 id='search_heading'>Videos</h3>")
-        self.ListSearchShows(html)
-
-        return True
+        return self.ListSearchShows(html)
 
     def ListCalendar(self):
-        self.log(u"", xbmc.LOGDEBUG)
+        logger.debug(u"")
         listItems = []
 
         try:
@@ -688,25 +699,29 @@ class TV3Provider(Provider):
         
             # Today
             newLabel = u"Today"
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + maxDateString
             listItems.append( (url,newListItem,True) )
         
             # Yesterday
             newLabel = u"Yesterday"
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(1)).strftime(u"%m/%d/%Y")
             listItems.append( (url,newListItem,True) )
         
             # Weekday
             newLabel = (today - timedelta(2)).strftime(u"%A")
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(2)).strftime(u"%m/%d/%Y")
             listItems.append( (url,newListItem,True) )
         
             # Weekday
             newLabel = (today - timedelta(3)).strftime(u"%A")
-            newListItem = xbmcgui.ListItem( label=newLabel )
+            newListItem = { 'label' : newLabel }
+#            newListItem = xbmcgui.ListItem( label=newLabel )
             url = self.GetURLStart() + u'&date=' + (today - timedelta(3)).strftime(u"%m/%d/%Y")
             listItems.append( (url,newListItem,True) )
         
@@ -714,16 +729,18 @@ class TV3Provider(Provider):
             sentinelDate = minDate - timedelta(1)
             while currentDate > sentinelDate:
                 newLabel = currentDate.strftime(u"%A, %d %B %Y")
-                newListItem = xbmcgui.ListItem( label=newLabel )
+                newListItem = { 'label' : newLabel }
+#                newListItem = xbmcgui.ListItem( label=newLabel )
                 url = self.GetURLStart() + u'&date=' + currentDate.strftime(u"%m/%d/%Y")
                 listItems.append( (url,newListItem,True) )
     
                 currentDate = currentDate - timedelta(1) 
         
-            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#            xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#            xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-            return True
+#            return True
+            return listItems
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -733,7 +750,7 @@ class TV3Provider(Provider):
                 exception.addLogMessage(msg)
                 
             # "Error creating calendar list"
-            message = self.language(30064)
+            message = "Error creating calendar list"
             details = utils.valueIfDefined(minDateString, u'minDateString') + u", "
             details = details + utils.valueIfDefined(maxDateString, u'maxDateString') + u", "
             
@@ -746,7 +763,7 @@ class TV3Provider(Provider):
             
             exception.addLogMessage(logMessage = message + u"\n" + details)
             # "Error creating calendar list"
-            exception.process(message, u"", self.logLevel(xbmc.LOGERROR))
+            exception.process(message, u"", self.logLevel(logging.ERROR))
             return False
     
     def ListByDate(self, date):
@@ -756,10 +773,10 @@ class TV3Provider(Provider):
         html = self.httpManager.GetWebPage( calendarUrl, 3600, values = values)
         if html is None or html == u'':
             # Data returned from web page: %s, is: '%s'
-            logException = LoggingException(logMessage = self.language(30060) % ( searchUrl, html ))
+            logException = LoggingException(logMessage = "Data returned from web page: %s, is '%s'" % ( searchUrl, html ))
 
             # Error getting web page
-            logException.process(self.language(30050), u'', self.logLevel(xbmc.LOGERROR))
+            logException.process("Error getting web page", u'', self.logLevel(logging.ERROR))
             return False
 
         soup = BeautifulSoup(html)
@@ -770,7 +787,7 @@ class TV3Provider(Provider):
         
         if len(videos) == 1 and len(videos[0].findAll(u'a')) == 0:
             # No videos broadcast on this date.
-            xbmc.executebuiltin(u'XBMC.Notification(IrishTV, %s)' % (videos[0].text))
+#            xbmc.executebuiltin(u'XBMC.Notification(IrishTV, %s)' % (videos[0].text))
             return True
         
         for video in videos:
@@ -795,14 +812,15 @@ class TV3Provider(Provider):
                     exception.addLogMessage(msg)
                     
                 # "Error processing video"
-                exception.addLogMessage(logMessage = self.language(30063) % u"video\n" + repr(video))
+                exception.addLogMessage(logMessage = "Error processing video\n" + repr(video))
                 # "Error processing video"
-                exception.process(self.language(30063) % programme % u"video\n", u"", xbmc.LOGWARNING)
+                exception.process("Error processing %s video" % programme, u"", logging.WARNING)
                 continue
             
-        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
-        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
+#        xbmcplugin.addDirectoryItems( handle=self.pluginHandle, items=listItems )
+#        xbmcplugin.endOfDirectory( handle=self.pluginHandle, succeeded=True )
             
-        return True
+#        return True
+        return listItems
 
 
