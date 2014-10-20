@@ -335,6 +335,7 @@ class Provider(object):
                 logging.info("Preparing to download video")
                 filename = self.Download(rtmpVar, defaultFilename, subtitles)
                 if filename:
+                    infoLabels['filename'] = filename
                     (basefile, ext) = os.path.splitext(filename)
                     with open(basefile + ".json", "w") as f:
                         f.write(json.dumps(infoLabels))
