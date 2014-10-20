@@ -529,8 +529,6 @@ class TG4Provider(BrightCoveProvider):
                     else:
                         newLabel = title
 
-                    newListItem = { 'label' : newLabel, 'thumbnail' : thumbnail,
-                                    'videoInfo' : infoLabels, 'Video' : True }
                     #newListItem = xbmcgui.ListItem( label=newLabel)
                     #newListItem.setThumbnailImage(thumbnail)
 
@@ -540,6 +538,10 @@ class TG4Provider(BrightCoveProvider):
                     
                     url = self.GetURLStart() + u'&episodeId=' + mycgi.URLEscape(id) + u'&series=' + mycgi.URLEscape(item['customFields']['seriestitle'])
      
+                    newListItem = { 'label' : newLabel, 'thumbnail' : thumbnail,
+                                    'videoInfo' : infoLabels, 'Video' : True,
+                                    'episodeId' : id, 'url' : url }
+
                     listItems.append( (url, newListItem, False) )
                 except (Exception) as exception:
                     if not isinstance(exception, LoggingException):

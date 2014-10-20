@@ -339,9 +339,9 @@ class Provider(object):
                     (basefile, ext) = os.path.splitext(filename)
                     with open(basefile + ".json", "w") as f:
                         f.write(json.dumps(infoLabels))
-                    return True
+                    return infoLabels
 
-            return False
+            return {}
     
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
@@ -349,7 +349,7 @@ class Provider(object):
     
             # Error playing or downloading episode %s
             exception.process("Error downloading episode %s" % u'', u'', self.logLevel(logging.ERROR))
-            return False
+            return {}
     
     # If the programme is in multiple parts, then second, etc. parts to the playList
     def AddSegments(self, playList):
