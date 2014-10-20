@@ -2,7 +2,7 @@
 # vim:ts=4:sw=4:ai:et:si:sts=4:fileencoding=utf-8
 import re
 import sys
-from time import mktime,strptime
+from time import mktime,strptime,time
 from datetime import timedelta
 from datetime import date
 
@@ -34,6 +34,10 @@ allShowsDefaultUrl  = u"http://www.tv3.ie/3player/allshows"
 searchUrl = u"http://www.tv3.ie/player/assets/php/search.php"
 calendarUrl = u"http://www.tv3.ie/player/assets/php/calendar.php"
 swfDefault = u"http://www.tv3.ie/player/assets/flowplayer/flash/flowplayer.commercial-3.2.7.swf"
+
+metaMap = { "og:title" : "Title", "og:description" : "Plot",
+            "og:site_name" : "station", "og:image" : "thumbnail" }
+labelMap = { "Broadcast:" : "pubDate", "Duration:" : "duration" }
 
 class TV3Provider(Provider):
 
@@ -142,7 +146,7 @@ class TV3Provider(Provider):
         logger.debug(u"category: %s, search: %s, allShows: %s, calendar: %s, date: %s, page: %s, thumbnail: %s, resume: %s" % (category, str(search), str(allShows), calendar, date, page, thumbnail, str(resume)))
 
         if search <> u'':
-            return self.DoSearch()
+            return self.DoSearch(search)
         
         if category <> u'':
             return self.ShowCategory(category)
@@ -317,7 +321,11 @@ class TV3Provider(Provider):
         url = self.GetURLStart() + u'&episodeId=' + resumeKey + u'&page=' + mycgi.URLEscape(page)
 
         contextMenuItems = []
-        newListItem = self.ResumeWatchListItem(url, resumeKey, contextMenuItems, infoLabels, thumbnail)
+        newListItem = { 'label' : label, 'episodeId' : resumeKey,
+                        'thumbnail' : thumbnail, 'Video' : True,
+                        'contextMenuItems' : contextMenuItems,
+                        'videoInfo' : infoLabels, 'url' : url }
+#        newListItem = self.ResumeWatchListItem(url, resumeKey, contextMenuItems, infoLabels, thumbnail)
             
         listItems.append( (url, newListItem, False) )
 
@@ -567,12 +575,39 @@ class TV3Provider(Provider):
 
         htmlparser = HTMLParser.HTMLParser()
         
-        title = htmlparser.unescape(soup.find(u'meta', {u'property' : u'og:title'})[u'content'])
-        description = htmlparser.unescape(soup.find(u'meta', {u'property' : u'og:description'})[u'content'])
+        infoLabels = { 'grabber' : 'irishtv',
+                       'scraperName' : self.GetProviderId(),
+                       'timestamp' : time() }
 
-        infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description}
+        meta = soup.findAll(u'meta')
+        for item in meta:
+            prop = item.get(u'property')
+            if not prop:
+                continue
+            if prop in metaMap:
+                infoLabels[metaMap[prop]] = htmlparser.unescape(item[u'content'])
 
-        self.log(u"infoLabels: %s" % infoLabels, logging.DEBUG)
+        labels = soup.findAll(u'div', id="descLabel")
+        for label in labels:
+            print label.prettify()
+            text = label.string
+            print text
+            if not text in labelMap:
+                continue
+            detail = label.nextSibling
+            value = detail.string
+            print value
+            infoLabels[labelMap[text]] = value
+
+        if 'duration' in infoLabels:
+            parts = infoLabels['duration'].split(":")
+            duration = 0
+            for part in parts:
+                duration *= 60
+                duration += int(part)
+            infoLabels['duration'] = duration
+
+        logger.debug(u"infoLabels: %s" % infoLabels)
         return infoLabels
 
 #==============================================================================
@@ -657,6 +692,7 @@ class TV3Provider(Provider):
         defaultFilename = infoLabels[u'Title']
 
         resumeKey = unicode(zlib.crc32(page))
+        infoLabels['id'] = resumeKey
         return self.PlayOrDownloadEpisode(infoLabels, thumbnail, rtmpVar, defaultFilename, url = None, subtitles = None, resumeKey = resumeKey, resumeFlag = resumeFlag)
 
 #==============================================================================

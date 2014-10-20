@@ -615,6 +615,8 @@ class Provider(object):
     #==============================================================================
     # thumbnail must be unicode, not str
     def GetThumbnailPath(self, thumbnail):
+        if type(thumbnail) is str:
+            thumbnail = unicode(thumbnail)
         thumbnail = unicodedata.normalize(u'NFKD', thumbnail).encode(u'ASCII', u'ignore')
         thumbnail = utils.replace_non_alphanum(thumbnail)
         logger.debug(u"thumbnail: " + thumbnail)

@@ -570,7 +570,11 @@ class RTEProvider(Provider):
                 url = self.GetURLStart() + u'&episodeId=' +  mycgi.URLEscape(episodeId)
         
                 contextMenuItems = []
-                newListItem = self.ResumeWatchListItem(url, episodeId, contextMenuItems, infoLabels, thumbnail)
+                newListItem = { 'label' : newLabel, 'episodeId' : episodeId,
+                                'thumbnail' : thumbnail, 'Video' : True,
+                                'contextMenuItems' : contextMenuItems,
+                                'videoInfo' : infoLabels, 'url' : url }
+#                newListItem = self.ResumeWatchListItem(url, episodeId, contextMenuItems, infoLabels, thumbnail)
                     
             listItems.append( (url, newListItem, folder) )
         except (Exception) as exception:
