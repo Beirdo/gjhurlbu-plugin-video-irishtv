@@ -73,7 +73,7 @@ class TG4Provider(BrightCoveProvider):
         return u"TG4"
 
     def ExecuteCommand(self, mycgi):
-        language = self.config.get("tg4", "language", "English")
+        language = self.config.get("TG4", "language", "English")
         logger.info(u"Language: " + language)
         if language != "Gaeilge":
             self.languageCode = u"en"
@@ -165,7 +165,7 @@ class TG4Provider(BrightCoveProvider):
         logger.debug(u"(category: %s, episodeId: %s, series: %s)" % (type(category), type(episodeId), type(series)))
         
         if search <> u'':
-            return self.DoSearch()
+            return self.DoSearch(search)
         
         if categories != '':
             return self.ShowCategories()
@@ -710,6 +710,8 @@ class TG4Provider(BrightCoveProvider):
 
             # ondemand?videoId=2160442511001&lineUpId=&pubId=1290862567001&playerId=1364138050001&affiliateId=
             app = appFormat % (episodeId, self.publisherId, self.playerId)
+
+            print mediaDTO
             
             # rtmp://cp156323.edgefcs.net/ondemand/&mp4:videos/1290862567001/1290862567001_2666234305001_WCL026718-2-4.mp4
             rtmpUrl = mediaDTO['FLVFullLengthURL']
@@ -755,7 +757,12 @@ class TG4Provider(BrightCoveProvider):
                          # u'mpaa': mediaDTO[u'customFields'][u'rating'],
                           u'episode': episodeNumber,
                           u'season': int(mediaDTO[u'customFields'][u'series']),
-                          u'aired': mediaDTO[u'customFields'][u'date']
+                          u'pubDate': mediaDTO[u'customFields'][u'date'],
+                          u'station': mediaDTO[u'publisherName'],
+                          u'duration': float(mediaDTO[u'length']) / 1000.0,
+                          u'grabber': 'irishtv',
+                          u'scraperName': 'TG4',
+                          u'timestamp': time.time()
                           }
             
             logo = mediaDTO[u'videoStillURL']
