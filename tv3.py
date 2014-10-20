@@ -589,14 +589,11 @@ class TV3Provider(Provider):
 
         labels = soup.findAll(u'div', id="descLabel")
         for label in labels:
-            print label.prettify()
             text = label.string
-            print text
             if not text in labelMap:
                 continue
             detail = label.nextSibling
             value = detail.string
-            print value
             infoLabels[labelMap[text]] = value
 
         if 'duration' in infoLabels:

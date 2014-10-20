@@ -7,9 +7,9 @@ gParamDict = {}
 gQSParsed = False
 
 def EmptyQS():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         return True
-    qs = sys.argv[1][1:]
+    qs = sys.argv[2][1:]
     return ( qs == '' )
 
 def Params( *args ):
@@ -36,7 +36,7 @@ def _ParseQS():
     global gParamDict
     global gQSParsed
     
-    qs = sys.argv[1][1:]
+    qs = sys.argv[2][1:]
     pairs = qs.split('&')
     gParamDict = {}
     for i in range(len(pairs)):

@@ -33,7 +33,7 @@ from loggingexception import LoggingException
 from BeautifulSoup import BeautifulSoup
 from ConfigParser import SafeConfigParser
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 scriptdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -85,7 +85,7 @@ cookie_handler = urllib2.HTTPCookieProcessor(cookiejar)
 opener = urllib2.build_opener(cookie_handler)
 
 httpManager = HttpManager()
-
+outputJsonFile = None
 
 def get_system_platform():
 	platform = "linux"
@@ -205,6 +205,12 @@ def executeCommand():
 				
 				if provider.initialise(httpManager, sys.argv[0], PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
 					success = provider.ExecuteCommand(mycgi)
+                    if outputJsonFile:
+                        with open(outputJsonFile, "w") as f:
+                            if not success:
+                                f.write("[]\n")
+                            else:
+                                f.write(json.dumps(success))
                     print success
 					logger.debug(u"executeCommand done")
 
@@ -231,6 +237,12 @@ def executeCommand():
 
 
 if __name__ == u"__main__":
+
+    if len(sys.argv) != 3:
+        print "Usage: %s resultsFile.json '?querystring'"
+        sys.exit(1)
+
+    outputJsonFile = sys.argv[1]
 
     try:
         if config.get("general", 'http-cache-disable', 'False') == 'False':

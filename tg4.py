@@ -496,7 +496,7 @@ class TG4Provider(BrightCoveProvider):
                     if title.startswith("TG4 Beo"):
                         continue
                     
-                    logger.info(u"Title: " + title)
+                    logger.debug(u"Title: " + title)
                     
                     if self.languageCode == u'ie':
                         description = item[u'longDescription']
