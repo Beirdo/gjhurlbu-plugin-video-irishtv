@@ -7,7 +7,7 @@ from loggingexception import LoggingException
 
 from rte import RTEProvider
 from tv3 import TV3Provider
-from aertv import AerTVProvider
+#from aertv import AerTVProvider
 from tg4 import TG4Provider
 import logging
 
@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 # Provider names
 
-__providers__ = [RTEProvider(), TV3Provider(), AerTVProvider(), TG4Provider()]
+#__providers__ = [RTEProvider(), TV3Provider(), AerTVProvider(), TG4Provider()]
+__providers__ = [RTEProvider(), TV3Provider(), TG4Provider()]
 
 
 def getProvider(name):

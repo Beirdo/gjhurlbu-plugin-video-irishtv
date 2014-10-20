@@ -606,46 +606,46 @@ class TG4Provider(BrightCoveProvider):
             exception.process("Error playing or downloading episode %s" % ' ' , '', self.logLevel(logging.ERROR))
             return False
         
-    def AddSegments(self, playList):
-        logger.debug("")
-        self.amfResponse = None
-        if self.totalParts < 2:
-            return
-
-        title = self.addon.getAddonInfo('name')
-        icon = self.addon.getAddonInfo('icon')
-        msg = "Adding more parts of this programme" # Adding more parts
-        #xbmc.executebuiltin('XBMC.Notification(%s, %s, 5000, %s)' % (title, msg, icon))
-
-        logger.debug("Find videos parts for reference Id %s" % self.referenceId)
-        for partNumber in range(2, self.totalParts + 1):
-            try:
-                self.amfResponse = None
-                logger.debug("Getting part %d" % partNumber)
-                partReference = self.referenceId[:-1] + unicode(partNumber)
-                mediaDTO = self.FindMediaByReferenceId(self.playerKey, self.playerId, partReference, self.publisherId)
-
-                (infoLabels, logo, rtmpVar, defaultFilename) = self.GetPlayListDetailsFromAMF(mediaDTO, appNormal, self.episodeId, live = False)
-
-                listItem = self.CreateListItem(infoLabels, logo) 
-                url = rtmpVar.getPlayUrl()
-
-                if self.GetPlayer(None, None, None).isPlaying():
-                    playList.add(url, listItem)
-        
-            except (Exception) as exception:
-                if not isinstance(exception, LoggingException):
-                    exception = LoggingException.fromException(exception)
-                    
-                if self.amfResponse is not None:
-                    msg = "self.amfResponse:\n\n%s\n\n" % utils.drepr(self.amfResponse)
-                    exception.addLogMessage(msg)
-
-                # Error processing 
-                exception.addLogMessage("Error processing")
-
-                # Error playing or downloading episode %s
-                exception.process('' , '', self.logLevel(logging.DEBUG))
+#    def AddSegments(self, playList):
+#        logger.debug("")
+#        self.amfResponse = None
+#        if self.totalParts < 2:
+#            return
+#
+#        title = self.addon.getAddonInfo('name')
+#        icon = self.addon.getAddonInfo('icon')
+#        msg = "Adding more parts of this programme" # Adding more parts
+#        #xbmc.executebuiltin('XBMC.Notification(%s, %s, 5000, %s)' % (title, msg, icon))
+#
+#        logger.debug("Find videos parts for reference Id %s" % self.referenceId)
+#        for partNumber in range(2, self.totalParts + 1):
+#            try:
+#                self.amfResponse = None
+#                logger.debug("Getting part %d" % partNumber)
+#                partReference = self.referenceId[:-1] + unicode(partNumber)
+#                mediaDTO = self.FindMediaByReferenceId(self.playerKey, self.playerId, partReference, self.publisherId)
+#
+#                (infoLabels, logo, rtmpVar, defaultFilename) = self.GetPlayListDetailsFromAMF(mediaDTO, appNormal, self.episodeId, live = False)
+#
+#                listItem = self.CreateListItem(infoLabels, logo) 
+#                url = rtmpVar.getPlayUrl()
+#
+#                if self.GetPlayer(None, None, None).isPlaying():
+#                    playList.add(url, listItem)
+#        
+#            except (Exception) as exception:
+#                if not isinstance(exception, LoggingException):
+#                    exception = LoggingException.fromException(exception)
+#                    
+#                if self.amfResponse is not None:
+#                    msg = "self.amfResponse:\n\n%s\n\n" % utils.drepr(self.amfResponse)
+#                    exception.addLogMessage(msg)
+#
+#                # Error processing 
+#                exception.addLogMessage("Error processing")
+#
+#                # Error playing or downloading episode %s
+#                exception.process('' , '', self.logLevel(logging.DEBUG))
 
 
     def ShowEpisode(self, episodeId, series, appFormat, live = False):

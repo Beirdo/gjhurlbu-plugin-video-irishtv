@@ -22,28 +22,20 @@ if REMOTE_DBG:
 
 
 import os
-#import xbmcplugin
-#import xbmcgui
-#import xbmc
+import sys
+import inspect
 import re
 import cookielib
 import urllib2
-#import xbmcvfs
 import logging
 
-#from xbmcaddon import Addon
 from loggingexception import LoggingException
 from BeautifulSoup import BeautifulSoup
 from ConfigParser import SafeConfigParser
 
 logger = logging.getLogger(__name__)
 
-#pluginName  = u'plugin.video.irishtv'
-#pluginHandle = int(sys.argv[1])
-#baseURL = sys.argv[0]
-
-#addon = Addon(pluginName)
-#language = addon.getLocalizedString
+scriptdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 persistDir = '/opt/prf/persist/irishtv'
 configFile = persistDir + '/config/irishtv.conf'
@@ -72,20 +64,18 @@ from provider import Provider
 xhausUrl = "http://www.xhaus.com/headers"
 
 # Use masterprofile rather profile, because we are caching data that may be used by more than one user on the machine
-DATA_FOLDER	  = config.get("general", "data-folder")
-CACHE_FOLDER	 = persistDir + "/cache"
-RESOURCE_PATH = os.path.join( sys.modules[u"__main__"].addon.getAddonInfo( u"path" ), u"resources" )
+CACHE_FOLDER = persistDir + "/cache"
+RESOURCE_PATH = os.path.join( scriptdir, u"resources" )
 MEDIA_PATH = os.path.join( RESOURCE_PATH, u"media" )
 PROFILE_DATA_FOLDER = persistDir + "/profile"
 COOKIE_PATH = os.path.join( PROFILE_DATA_FOLDER, u"cookiejar.txt" )
 
 
-log("Loading cookies from :" + repr(COOKIE_PATH))
+logger.info("Loading cookies from :" + repr(COOKIE_PATH))
 cookiejar = cookielib.LWPCookieJar(COOKIE_PATH)
 
 if os.path.exists(COOKIE_PATH):
     try:
-        #cookiejar.load(COOKIE_PATH)
         cookiejar.load()
     except:
         pass
@@ -95,9 +85,6 @@ opener = urllib2.build_opener(cookie_handler)
 
 httpManager = HttpManager()
 
-
-#SUBTITLE_FILE	= os.path.join( DATA_FOLDER, 'subtitle.smi' )
-#NO_SUBTITLE_FILE = os.path.join( RESOURCE_PATH, 'nosubtitles.smi' )
 
 def get_system_platform():
 	platform = "linux"
@@ -124,21 +111,15 @@ def ShowProviders():
 		providerName = provider.GetProviderId()
 		logger.debug(u"Adding " + providerName + u" provider")
         newListItem = { 'label' : providerName }
-		#newListItem = xbmcgui.ListItem( providerName )
-		url = baseURL + u'?provider=' + providerName
+		url = u'provider: ' + providerName
 
 		logger.debug(u"url: " + url)
 		thumbnailPath = provider.GetThumbnailPath(providerName)
 		logger.debug(providerName + u" thumbnail: " + thumbnailPath)
         newListItem.update({'thumbnail' : thumbnailPath,
-                            'contextMenuItems' : contextItems })
-		#newListItem.setThumbnailImage(thumbnailPath)
-		#newListItem.addContextMenuItems( contextMenuItems )
+                            'contextMenuItems' : contextMenuItems })
 		listItems.append( (url,newListItem,True) )
 	
-
-	#xbmcplugin.addDirectoryItems( handle=pluginHandle, items=listItems )
-	#xbmcplugin.endOfDirectory( handle=pluginHandle, succeeded=True )
     return listItems
 		
 
@@ -149,7 +130,7 @@ def InitTimeout():
 	environment = os.environ.get( u"OS", u"linux" )
 	if environment in [u'Linux', u'xbox']:
 		try:
-			timeout = int(addon.getSetting(u'socket_timeout'))
+			timeout = int(config.get("general", 'socket-timeout', "60"))
 			if (timeout > 0):
 				setdefaulttimeout(timeout)
 		except:
@@ -189,7 +170,6 @@ def TestForwardedIP(forwardedIP):
 	
 #==============================================================================
 def executeCommand():
-	pluginHandle = int(sys.argv[1])
 	success = False
 
 	if ( mycgi.EmptyQS() ):
@@ -203,7 +183,6 @@ def executeCommand():
 		
 		elif testForwardedIP != u'':
 			provider = Provider()
-			#provider.addon = addon
 
 			httpManager.SetDefaultHeaders( provider.GetHeaders() )
 			forwardedIP = provider.CreateForwardedForIP('0.0.0.0')
@@ -222,7 +201,7 @@ def executeCommand():
 					logException.process("Cannot proceed", "Error processing provider name", logging.ERROR)
 					return False
 				
-				if provider.initialise(httpManager, sys.argv[0], pluginHandle, addon, PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
+				if provider.initialise(httpManager, PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
 					success = provider.ExecuteCommand(mycgi)
 					logger.debug(u"executeCommand done")
 
@@ -251,7 +230,7 @@ def executeCommand():
 if __name__ == u"__main__":
 
 		try:
-			if addon.getSetting(u'http_cache_disable') == u'false':
+			if config.get("general", 'http-cache-disable', 'False') == 'False':
 				httpManager.SetCacheDir( CACHE_FOLDER )
 	
 			InitTimeout()

@@ -534,7 +534,7 @@ class RTEProvider(Provider):
         
             newLabel = title + u", " + date
                                             
-            if self.addon.getSetting( u'RTE_descriptions' ) == u'true':
+            if self.config.get("RTE", 'descriptions', "True" ) == 'True':
                 infoLabels = self.GetEpisodeInfo(self.GetEpisodeIdFromURL(href))
             else:
                 infoLabels = {u'Title': newLabel, u'Plot': title}

@@ -72,8 +72,8 @@ class Provider(object):
     def CreateForwardedForIP(self, currentForwardedForIP):
         currentSegments = currentForwardedForIP.split(u'.')
         
-        ipSegment1 = int(float(self.addon.getSetting(u'forward_segment1')))
-        ipSegment2 = int(float(self.addon.getSetting(u'forward_segment2')))
+        ipSegment1 = int(float(self.config.get("general", u'forward-segment1', 46)))
+        ipSegment2 = int(float(self.config.get("general", u'forward-segment2', 7)))
 
         if len(currentSegments) == 4 and int(currentSegments[0]) == ipSegment1 and int(currentSegments[1]) == ipSegment2:
             # Settings haven't changed, return the current ip
@@ -89,8 +89,6 @@ class Provider(object):
     """
     def ExecuteCommand(self, mycgi):
         logger.debug(u"mycgi.ParamCount(): " + unicode(mycgi.ParamCount()))
-        self.resumeEnabled = self.addon.getSetting(u'resume_enabled') == u'true'
-        self.watchedEnabled = self.addon.getSetting(u'show_watched') == u'true'
  
         (forwardedIP, episodeId, playFromStart, resume, deleteResume, forceResumeUnlock, clearCache, watched, unwatched) = mycgi.Params( u'forwardedip', u'episodeId', PLAYFROMSTART, RESUME, DELETERESUME, FORCERESUMEUNLOCK, u'clearcache', u'watched', u'unwatched')
         
@@ -152,10 +150,7 @@ class Provider(object):
             logger.info(u"Exception getting country code: " + repr(exception))
             
             
-    def initialise(self, httpManager, baseurl, pluginHandle, addon, dataFolder, resourcePath, config):
-        self.baseurl = baseurl
-        self.pluginHandle = pluginHandle
-        self.addon = addon
+    def initialise(self, httpManager, dataFolder, resourcePath, config):
         self.dataFolder = dataFolder
         self.resourcePath = resourcePath
         self.config = config
@@ -187,11 +182,11 @@ class Provider(object):
         proxy_user = None
         proxy_pass = None
         try:
-            proxy_server = self.addon.getSetting(u'proxy_server').decode(u'utf8')
-            proxy_type_id = int(self.addon.getSetting(u'proxy_type'))
-            proxy_port = int(self.addon.getSetting(u'proxy_port'))
-            proxy_user = self.addon.getSetting(u'proxy_user').decode(u'utf8')
-            proxy_pass = self.addon.getSetting(u'proxy_pass').decode(u'utf8')
+            proxy_server = self.config.get("general", u'proxy-server', '').decode(u'utf8')
+            proxy_type_id = int(self.config.get("general", u'proxy-type', 0))
+            proxy_port = int(self.config.get("general", u'proxy-port', 8080))
+            proxy_user = self.config.get("general", u'proxy-user', '').decode(u'utf8')
+            proxy_pass = self.config.get("general", u'proxy-pass', '').decode(u'utf8')
         except ( Exception ) as exception:
             raise exception
     
@@ -201,6 +196,9 @@ class Provider(object):
         elif proxy_type_id == 3: proxy_type = socks.PROXY_TYPE_SOCKS5
     
         proxy_dns = True
+
+        if proxy_server == u'':
+            proxy_server = None
     
         if proxy_user == u'':
             proxy_user = None
@@ -215,7 +213,7 @@ class Provider(object):
 
     def GetProxyMethod(self):
         try:
-            proxy_method = int(self.addon.getSetting(self.GetProviderId() + u'_proxy_method'))
+            proxy_method = int(self.config.getSetting(self.GetProviderId(), u'proxy-method', 0))
         except (Exception) as exception:
             self.error("Exception getting proxy_method: " + unicode(exception))
             proxy_method = 0
@@ -242,31 +240,31 @@ class Provider(object):
             return None
         
         bitRates = {
-            u"":None,                            #Setting not set, so use default value
+            "":None,                  #Setting not set, so use default value
             "Default":None,           #Default
-            "Lowest Available":-1,             #Lowest Available
+            "Lowest Available":-1,       #Lowest Available
             "Max 200kps":200 * 1024,     #Max 200kps
             "Max 350kps":350 * 1024,     #Max 350kps
             "Max 500kps":500 * 1024,     #Max 500kps
             "Max 750kps":750 * 1024,     #Max 750kps
-            "Max 1000kps":1000 * 1024,    #Max 1000kps
-            "Max 1500kps":1500 * 1024,    #Max 1500kps
-            "Max 2000kps":2000 * 1024,    #Max 2000kps
+            "Max 1000kps":1000 * 1024,   #Max 1000kps
+            "Max 1500kps":1500 * 1024,   #Max 1500kps
+            "Max 2000kps":2000 * 1024,   #Max 2000kps
             "Highest Available":20000 * 1024    #Highest Available
             }
 
-        bitrate_string = unicode(self.addon.getSetting(u'bitrate'))
+        bitrate_string = unicode(self.config.get(self.GetProviderId(), u'bitrate', ""))
         
         return bitRates[bitrate_string]
 
 
-    def GetURLStart(self):
-        urlStart = self.baseurl + u'?provider=' + self.GetProviderId() 
-        forwardedIP = self.httpManager.GetForwardedForIP()
-        if forwardedIP is not None:
-            urlStart = urlStart + u'&forwardedip=' + forwardedIP
-             
-        return urlStart
+#    def GetURLStart(self):
+#        urlStart = self.baseurl + u'?provider=' + self.GetProviderId() 
+#        forwardedIP = self.httpManager.GetForwardedForIP()
+#        if forwardedIP is not None:
+#            urlStart = urlStart + u'&forwardedip=' + forwardedIP
+#             
+#        return urlStart
     
     def GetHeaders(self):
         # Windows 8, Internet Explorer 10
@@ -289,7 +287,7 @@ class Provider(object):
         return None
 
     def GetAction(self, title):
-        actionSetting = self.addon.getSetting( u'select_action' ).decode(u'utf8')
+        actionSetting = self.config.getSetting(self.GetProviderId(), u'select_action', "Download").decode(u'utf8')
         self.debug(u"action: " + actionSetting)
         action = 0
     
@@ -535,7 +533,7 @@ class Provider(object):
     
         # Ensure rtmpdump has been located
         #rtmpdumpPath = self.addon.getSetting(u'rtmpdump_path').decode(u'utf8')
-        rtmpdumpPath = self.config.get("general", 'rtmpdump_path', '').decode(u'utf8')
+        rtmpdumpPath = self.config.get("general", 'rtmpdump-path', '').decode(u'utf8')
         #if ( rtmpdumpPath is u'' ):
             #dialog = xbmcgui.Dialog()
             # Download Error - You have not located your rtmpdump executable...
@@ -550,7 +548,7 @@ class Provider(object):
         
         # Ensure default download folder is defined
         #downloadFolder = self.addon.getSetting(u'download_folder').decode(u'utf8')
-        downloadFolder = self.config.get("general", 'download_folder', '').decode(u'utf8')
+        downloadFolder = self.config.get("general", 'download-folder', '').decode(u'utf8')
         #if downloadFolder is u'':
             #d = xbmcgui.Dialog()
             ## Download Error - You have not set the default download folder.\n Please update the self.addon settings and try again.',u'',u'')
@@ -611,7 +609,7 @@ class Provider(object):
         if not os.path.exists(path):
             path = os.path.join(self.GetMediaPath(), self.GetProviderId() + u'.jpg') 
 
-        log.debug(u"GetThumbnailPath: " + path)
+        logger.debug(u"GetThumbnailPath: " + path)
         return path
     #
     def fullDecode(self, text):
