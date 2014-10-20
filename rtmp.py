@@ -30,8 +30,6 @@ class RTMP:
         self.rtmpdumpPath = None
         self.downloadFolder = None
 
-        self.language = sys.modules["__main__"].language
-    
     # hostname:port
     def setProxyString(self, string):
         self.socks = string

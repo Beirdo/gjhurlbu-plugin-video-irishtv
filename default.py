@@ -33,6 +33,7 @@ from loggingexception import LoggingException
 from BeautifulSoup import BeautifulSoup
 from ConfigParser import SafeConfigParser
 
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 scriptdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -174,6 +175,7 @@ def executeCommand():
 
 	if ( mycgi.EmptyQS() ):
 		success = ShowProviders()
+        print success
 	else:
 		(providerName, clearCache, testForwardedIP) = mycgi.Params( u'provider', u'clearcache', u'testforwardedip' )
 
@@ -201,8 +203,9 @@ def executeCommand():
 					logException.process("Cannot proceed", "Error processing provider name", logging.ERROR)
 					return False
 				
-				if provider.initialise(httpManager, PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
+				if provider.initialise(httpManager, sys.argv[0], PROFILE_DATA_FOLDER, RESOURCE_PATH, config):
 					success = provider.ExecuteCommand(mycgi)
+                    print success
 					logger.debug(u"executeCommand done")
 
 				"""
@@ -229,29 +232,29 @@ def executeCommand():
 
 if __name__ == u"__main__":
 
-		try:
-			if config.get("general", 'http-cache-disable', 'False') == 'False':
-				httpManager.SetCacheDir( CACHE_FOLDER )
-	
-			InitTimeout()
-		
-			# Each command processes a web page
-			# Get the web page from the cache if it's there
-			# If there is an error when processing the web page from the cache
-			# we want to try again, this time getting the page from the web
-			httpManager.setGetFromCache(True)
-			success = executeCommand()			
-	
-			logger.debug(u"success: %s, getGotFromCache(): %s" % (unicode(success), unicode(httpManager.getGotFromCache())))
-			
-			if success is not None and success == False and httpManager.getGotFromCache() == True:
-				httpManager.setGetFromCache(False)
-				executeCommand()
-				logger.debug(u"executeCommand after")
-				
-		except:
-			# Make sure the text from any script errors are logged
-			import traceback
-			traceback.print_exc(file=sys.stdout)
-			raise
+    try:
+        if config.get("general", 'http-cache-disable', 'False') == 'False':
+            httpManager.SetCacheDir( CACHE_FOLDER )
+
+        InitTimeout()
+    
+        # Each command processes a web page
+        # Get the web page from the cache if it's there
+        # If there is an error when processing the web page from the cache
+        # we want to try again, this time getting the page from the web
+        httpManager.setGetFromCache(True)
+        success = executeCommand()			
+
+        logger.info(u"success: %s, getGotFromCache(): %s" % (unicode(success), unicode(httpManager.getGotFromCache())))
+        
+        if success is not None and success == False and httpManager.getGotFromCache() == True:
+            httpManager.setGetFromCache(False)
+            executeCommand()
+            logger.debug(u"executeCommand after")
+            
+    except:
+        # Make sure the text from any script errors are logged
+        import traceback
+        traceback.print_exc(file=sys.stdout)
+        raise
 

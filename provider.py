@@ -7,6 +7,7 @@ import random
 import socks
 import proxyconfig
 import unicodedata
+import json
 
 from loggingexception import LoggingException
 from urlparse import urlunparse
@@ -34,6 +35,7 @@ PLAYFROMSTART = u"playfromstart"
 RESUME = u"resume"
 DELETERESUME = u"deleteresume"
 FORCERESUMEUNLOCK = u"force_resume_unlock"
+
 
 class Provider(object):
 
@@ -150,7 +152,8 @@ class Provider(object):
             logger.info(u"Exception getting country code: " + repr(exception))
             
             
-    def initialise(self, httpManager, dataFolder, resourcePath, config):
+    def initialise(self, httpManager, baseurl, dataFolder, resourcePath, config):
+        self.baseurl = baseurl
         self.dataFolder = dataFolder
         self.resourcePath = resourcePath
         self.config = config
@@ -213,9 +216,9 @@ class Provider(object):
 
     def GetProxyMethod(self):
         try:
-            proxy_method = int(self.config.getSetting(self.GetProviderId(), u'proxy-method', 0))
+            proxy_method = int(self.config.get(self.GetProviderId(), u'proxy-method', 0))
         except (Exception) as exception:
-            self.error("Exception getting proxy_method: " + unicode(exception))
+            logger.error("Exception getting proxy_method: " + unicode(exception))
             proxy_method = 0
             
         return proxy_method
@@ -258,13 +261,13 @@ class Provider(object):
         return bitRates[bitrate_string]
 
 
-#    def GetURLStart(self):
-#        urlStart = self.baseurl + u'?provider=' + self.GetProviderId() 
-#        forwardedIP = self.httpManager.GetForwardedForIP()
-#        if forwardedIP is not None:
-#            urlStart = urlStart + u'&forwardedip=' + forwardedIP
-#             
-#        return urlStart
+    def GetURLStart(self):
+        urlStart = self.baseurl + u'?provider=' + self.GetProviderId() 
+        forwardedIP = self.httpManager.GetForwardedForIP()
+        if forwardedIP is not None:
+            urlStart = urlStart + u'&forwardedip=' + forwardedIP
+             
+        return urlStart
     
     def GetHeaders(self):
         # Windows 8, Internet Explorer 10
@@ -287,8 +290,8 @@ class Provider(object):
         return None
 
     def GetAction(self, title):
-        actionSetting = self.config.getSetting(self.GetProviderId(), u'select_action', "Download").decode(u'utf8')
-        self.debug(u"action: " + actionSetting)
+        actionSetting = self.config.get(self.GetProviderId(), u'select-action', "Download").decode(u'utf8')
+        logger.debug(u"action: " + actionSetting)
         action = 0
     
         ## Ask
@@ -316,8 +319,8 @@ class Provider(object):
         try:
             action = self.GetAction(infoLabels[u'Title'])
     
-            if self.dialog.iscanceled():
-                return False
+            #if self.dialog.iscanceled():
+            #    return False
             
             #if ( action == 1 ):
             #    # Play
@@ -330,9 +333,15 @@ class Provider(object):
                     # "Preparing to download video"
                 #self.dialog.update(50, self.language(30086))
                 logging.info("Preparing to download video")
-                self.Download(rtmpVar, defaultFilename, subtitles)
+                filename = self.Download(rtmpVar, defaultFilename, subtitles)
+                if filename:
+                    (basefile, ext) = os.path.splitext(filename)
+                    with open(basefile + ".json", "w") as f:
+                        f.write(json.dumps(infoLabels))
+                    return True
+
+            return False
     
-            return True
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -471,6 +480,8 @@ class Provider(object):
         (rtmpdumpPath, downloadFolder, filename) = self.GetDownloadSettings(defaultFilename)
     
         savePath = os.path.join( downloadFolder, filename )
+        (basefile, ext) = os.path.splitext(savePath)
+        logfile = basefile + ".log"
         rtmpVar.setDownloadDetails(rtmpdumpPath, savePath)
         parameters = rtmpVar.getParameters()
 
@@ -511,6 +522,9 @@ class Provider(object):
         logger.debug(u"rtmpdump has stopped executing")
     
         stderr = utils.normalize(stderr) 
+        with open(logfile, "w") as f:
+            f.write("stdout:\n" + str(stdout).encode("utf-8"))
+            f.write("stderr:\n" + str(stderr).encode("utf-8"))
 
         if u'Download complete' in stderr:
             # Download Finished!
@@ -518,7 +532,7 @@ class Provider(object):
             logger.debug(u'stderr: ' + str(stderr))
             logger.info(u"Download Finished!")
             #xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000, %s)' % ( self.language(30620), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
-            return True
+            return savePath
         else:
             # Download Failed!
             logger.error(u'stdout: ' + str(stdout))
@@ -634,16 +648,17 @@ class Provider(object):
         return u"".join(res)
                  
 #==============================================================================
-    def DoSearch(self):
-        return False
-        #self.log(u"", xbmc.LOGDEBUG)
+    def DoSearch(self, query=None):
+        logger.debug(u"")
         ## Search
         #kb = xbmc.Keyboard( u"", self.language(30500) )
         #kb.doModal()
         #if ( kb.isConfirmed() == False ): return
         #query = kb.getText()
+        if not query:
+            return False
 
-        #return self.DoSearchQuery( query = query )
+        return self.DoSearchQuery( query = query )
 
     # Download the given url and return the first string that matches the pattern
     def GetStringFromURL(self, url, pattern, maxAge = 20000):
@@ -670,7 +685,6 @@ class Provider(object):
             raise exception
     
     def PlayVideoWithDialog(self, method, parameters):
-        return False
         #try:
             #self.dialog = xbmcgui.DialogProgress()
             #self.dialog.create(self.GetProviderId(), self.language(30085))
@@ -678,6 +692,7 @@ class Provider(object):
             #return method(*parameters)
         #finally:
             #self.dialog.close()
+        return method(*parameters)
 
     def MakeCookie(self, name, value, domain, expires = None):
         return Cookie(
@@ -748,7 +763,6 @@ class Provider(object):
         mins = int(time / 60) % 60
         secs = int(time) % 60
         return unicode(str.format("{0:02}:{1:02}:{2:02}", hours, mins, secs))
-
 
 class Subtitle(object):
     

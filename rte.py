@@ -3,7 +3,7 @@
 
 import re
 import sys
-from time import mktime,strptime
+from time import mktime,strptime,time
 from datetime import timedelta
 from datetime import date
 from datetime import datetime
@@ -46,6 +46,10 @@ swfLiveDefault = u"http://www.rte.ie/player/assets/player_468.swf"
 """
 swfLiveDefault = u"http://www.rte.ie/static/player/swf/osmf2_2013_06_25b.swf"
 defaultLiveTVPage = u"/player/ie/live/8/"
+
+episodeMap = { 'programme' : 'Title', 'description' : 'Plot',
+               'categories' : 'Genre', 'duration' : 'duration',
+               'datemodified' : 'pubDate', 'channel' : 'station' }
 
 class RTEProvider(Provider):
 
@@ -147,7 +151,7 @@ class RTEProvider(Provider):
 
         if search <> '':
             if page == '':
-                return self.DoSearch()
+                return self.DoSearch(search)
             else:
                 return self.DoSearchQuery( queryUrl = urlRoot + page)
                  
@@ -651,7 +655,7 @@ class RTEProvider(Provider):
         
         title = title + u' [' + dateShown + u']'
     
-        infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description}
+        infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description, 'pubDate' : dateShown}
 
         match = re.search( u"/player/[^/]+/show/([0-9]+)/", href )
         if match is None:
@@ -663,7 +667,11 @@ class RTEProvider(Provider):
         url = self.GetURLStart() + u'&episodeId=' +  mycgi.URLEscape(episodeId)
 
         contextMenuItems = []
-        newListItem = self.ResumeWatchListItem(url, episodeId, contextMenuItems, infoLabels, thumbnail)    
+        newListItem = { 'label' : title, 'episodeId' : episodeId,
+                        'thumbnail' : thumbnail, "Video" : True,
+                        'contextMenuItems' : contextMenuItems,
+                        'videoInfo' : infoLabels, 'url' : url }
+        #self.ResumeWatchListItem(url, episodeId, contextMenuItems, infoLabels, thumbnail)    
             
         listItems.append( (url, newListItem, True) )
         
@@ -821,16 +829,30 @@ class RTEProvider(Provider):
     
     def GetEpisodeInfo(self, episodeId, soup = None):
         logger.debug(u"")
+
+        infoLabels = { 'grabber' : 'irishtv',
+                       'scraperName' : self.GetProviderId(),
+                       'timestamp' : time(),
+                       'id' : episodeId }
     
         try:
             html = None
             if soup is None:
                 html = self.httpManager.GetWebPage(showUrl % episodeId, 20000)
                 soup = BeautifulSoup(html, selfClosingTags=[u'img'])
-    
-            title = soup.find(u'meta', { u'name' : u"programme"} )[u'content']
-            description = soup.find(u'meta', { u'name' : u"description"} )[u'content']
-            categories = soup.find(u'meta', { u'name' : u"categories"} )[u'content']
+
+            meta = soup.findAll(u'meta')
+            for item in meta:
+                name = item.get('name')
+                if not name:
+                    continue
+                if name in episodeMap:
+                    infoLabels[episodeMap[name]] = item['content']
+
+            if 'duration' in infoLabels:
+                duration = float(infoLabels['duration']) / 1000.0
+                infoLabels['duration'] = duration
+
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)
@@ -843,16 +865,10 @@ class RTEProvider(Provider):
             exception.addLogMessage("Error processing web page: " + (showUrl % episodeId))
             exception.process(u"Error getting episode information", "", self.logLevel(logging.WARNING))
     
-            # Initialise values in case they are None
-            if title is None:
-                title = 'Unknown ' + episodeId
-                
-            description = unicode(description)
-            categories = unicode(categories)
+        if not 'Title' in infoLabels or not infoLabels['Title']:
+            infoLabels['Title'] = 'Unknown ' + episodeId
         
-        infoLabels = {u'Title': title, u'Plot': description, u'PlotOutline': description, u'Genre': categories}
-    
-        logger.debug(u"Title: %s" % title)
+        logger.debug(u"Title: %s" % infoLabels['Title'])
         logger.debug(u"infoLabels: %s" % infoLabels)
         return infoLabels
     
@@ -891,7 +907,7 @@ class RTEProvider(Provider):
 #                return False
             # "Getting playpath data"
             logger.info("Getting playpath data")
-            urlGroups = self.GetStringFromURL(feedsPrefix + episodeId, u"\"url\": \"(/[0-9][0-9][0-9][0-9]/[0-9][0-9][0-9][0-9]/)([a-zA-Z0-9]+/)?(.+).f4m\"", 20000)
+            urlGroups = self.GetStringFromURL(feedsPrefix + episodeId, u"\"url\": \"(/[0-9][0-9][0-9][0-9]/[0-9][0-9][0-9][0-9]/)([a-zA-Z0-9]+/)?(.+?)(?:/manifest)?.f4m\"", 20000)
             feedProcessStatus = 2
             if urlGroups is None:
                 # Log error
@@ -899,16 +915,18 @@ class RTEProvider(Provider):
                 return False
     
             (urlDateSegment, extraSegment, urlSegment) = urlGroups
+            logger.info("urlGroups: %s" % list(urlGroups))
     
-            rtmpStr = u"rtmpe://fmsod.rte.ie:1935/rtevod"
+            rtmpStr = u"rtmpe://fmsod.rte.ie/rtevod"
             app = u"rtevod"
             swfVfy = swfPlayer
             playPath = u"mp4:%s%s/%s_512k.mp4" % (urlDateSegment, urlSegment, urlSegment)
-            playURL = u"%s app=%s playpath=%s swfurl=%s swfvfy=true" % (rtmp, app, playPath, swfVfy)
+            playURL = u"%s app=%s playpath=%s swfvfy=%s" % (rtmpStr, app, playPath, swfVfy)
     
             rtmpVar = rtmp.RTMP(rtmp = rtmpStr, app = app, swfVfy = swfVfy, playPath = playPath)
             self.AddSocksToRTMP(rtmpVar)
             defaultFilename = self.GetDefaultFilename(infoLabels[u'Title'], episodeId)
+            infoLabels['filename'] = defaultFilename
     
             logger.debug(u"(%s) playUrl: %s" % (episodeId, playURL))
             
@@ -1109,9 +1127,7 @@ class RTEProvider(Provider):
                 logException.process("Error getting web page", u'', severity = self.logLevel(logging.WARNING))
                 return False
     
-            self.ListSearchShows(html)
-    
-            return True
+            return self.ListSearchShows(html)
         except (Exception) as exception:
             if not isinstance(exception, LoggingException):
                 exception = LoggingException.fromException(exception)

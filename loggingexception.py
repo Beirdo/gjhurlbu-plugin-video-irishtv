@@ -64,19 +64,15 @@ class LoggingException (Exception):
         return self.severity
 
     def addLogMessage(self, logMessage, method = None):
-#        self.logMessages.append('In ' + method + ': ' + logMessage)
-        if method is None:
-            method = inspect.stack()[1][3]
-            
-        self.logMessages.append([ method, logMessage ])
+        self.logMessages.append(logMessage)
 
     def printLogMessages(self, severity):
         for message in self.logMessages:
-            logger.log(severity, message[1], message[0])
+            logger.log(severity, message)
             #self.log(message[1], severity, message[0])
             
         if self.trace is not None:
-            logger.log(severity, self.trace, method="")
+            logger.log(severity, self.trace)
             #self.log(self.trace, severity, method ="")
 
     def showInfo(self, messageHeading, messageDetail, severity):
@@ -90,7 +86,7 @@ class LoggingException (Exception):
 
     def process(self, messageHeading = '', messageDetail = '', severity = logging.DEBUG):
         if messageHeading == '':
-             messageHeading = self.logMessages[-1][1]
+             messageHeading = self.logMessages[-1]
              
         self.printLogMessages(severity)
         self.showInfo(messageHeading, messageDetail, severity)
