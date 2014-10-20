@@ -28,6 +28,7 @@ import re
 import cookielib
 import urllib2
 import logging
+import json
 
 from loggingexception import LoggingException
 from BeautifulSoup import BeautifulSoup

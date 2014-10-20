@@ -711,8 +711,6 @@ class TG4Provider(BrightCoveProvider):
             # ondemand?videoId=2160442511001&lineUpId=&pubId=1290862567001&playerId=1364138050001&affiliateId=
             app = appFormat % (episodeId, self.publisherId, self.playerId)
 
-            print mediaDTO
-            
             # rtmp://cp156323.edgefcs.net/ondemand/&mp4:videos/1290862567001/1290862567001_2666234305001_WCL026718-2-4.mp4
             rtmpUrl = mediaDTO['FLVFullLengthURL']
             playPathIndex = rtmpUrl.index(u'&') + 1
@@ -762,7 +760,8 @@ class TG4Provider(BrightCoveProvider):
                           u'duration': float(mediaDTO[u'length']) / 1000.0,
                           u'grabber': 'irishtv',
                           u'scraperName': 'TG4',
-                          u'timestamp': time.time()
+                          u'timestamp': time.time(),
+                          u'id' : mediaDTO[u'id']
                           }
             
             logo = mediaDTO[u'videoStillURL']
