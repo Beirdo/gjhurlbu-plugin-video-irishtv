@@ -339,6 +339,9 @@ class Provider(object):
                     (basefile, ext) = os.path.splitext(filename)
                     with open(basefile + ".json", "w") as f:
                         f.write(json.dumps(infoLabels))
+                    if os.path.exists(basefile + ".resume.sh"):
+                        # This is a resume - so failure
+                        infoLabels['resume'] = True
                     return infoLabels
 
             return {}
@@ -483,6 +486,7 @@ class Provider(object):
         savePath = os.path.join( downloadFolder, filename )
         (basefile, ext) = os.path.splitext(savePath)
         logfile = basefile + ".log"
+        resumeFile = basefile + ".resume.sh"
         rtmpVar.setDownloadDetails(rtmpdumpPath, savePath)
         parameters = rtmpVar.getParameters()
 
@@ -520,7 +524,7 @@ class Provider(object):
     
         logger.debug(u"rtmpdump has started executing")
         (stdout, stderr) = p.communicate()
-        logger.debug(u"rtmpdump has stopped executing")
+        logger.debug(u"rtmpdump has stopped executing, return code %d" % p.returncode)
     
         stderr = utils.normalize(stderr) 
         with open(logfile, "w") as f:
@@ -532,14 +536,22 @@ class Provider(object):
             logger.debug(u'stdout: ' + str(stdout))
             logger.debug(u'stderr: ' + str(stderr))
             logger.info(u"Download Finished!")
-            #xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000, %s)' % ( self.language(30620), filename, self.addon.getAddonInfo('icon'))).encode(u'utf8'))
             return savePath
         else:
             # Download Failed!
             logger.error(u'stdout: ' + str(stdout))
             logger.error(u'stderr: ' + str(stderr))
             logger.info(u"Download Failed!")
-            #xbmc.executebuiltin((u'XBMC.Notification(%s,%s,2000)' % ( u"Download Failed! See log for details", filename)).encode(u'utf8'))
+            if p.returncode == 2:
+                # Resume later
+                with open(resumeFile, "w") as f:
+                    f.write("#! /bin/bash\n" + cmdline + " --resume\n")
+                os.chmod(resumeFile, 0o775)
+                return savePath
+            else:
+                os.unlink(savePath)
+                os.unlink(logfile)
+
             return False
 
     #==============================================================================
